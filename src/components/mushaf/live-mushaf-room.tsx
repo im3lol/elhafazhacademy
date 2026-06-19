@@ -68,6 +68,7 @@ export function LiveMushafRoom({
   const [otherOnline, setOtherOnline] = useState(false);
   const [sel, setSel] = useState<Selection>(null);
   const [mistakeType, setMistakeType] = useState<MistakeType>("tajweed");
+  const [qmenu, setQmenu] = useState<{ x: number; y: number; surah: number; ayah: number; word: number | null } | null>(null);
   const [marked, setMarked] = useState<Map<string, MistakeType>>(
     () => new Map(mistakes.map((m) => [wkey(m.surah_number, m.ayah_number, m.word_index), m.mistake_type])),
   );
@@ -189,6 +190,22 @@ export function LiveMushafRoom({
 
   const behindTeacher = !isPresenter && teacherPage != null && teacherPage !== page;
 
+  // إضافة سريعة عبر كليك يمين: تُسجّل الخطأ فوراً (العنوان = اسم النوع) دون نموذج كامل.
+  function quickAdd(typeKey: MistakeType) {
+    if (!qmenu) return;
+    const fd = new FormData();
+    fd.set("student_id", studentId);
+    fd.set("class_id", classId);
+    fd.set("surah_number", String(qmenu.surah));
+    fd.set("ayah_number", String(qmenu.ayah));
+    if (qmenu.word != null) fd.set("word_index", String(qmenu.word));
+    fd.set("mistake_type", typeKey);
+    fd.set("title", MISTAKE_TYPES[typeKey].label);
+    addAction(fd);
+    setMarked((prev) => new Map(prev).set(wkey(qmenu.surah, qmenu.ayah, qmenu.word), typeKey));
+    setQmenu(null);
+  }
+
   return (
     <div className="space-y-3">
       {/* شريط الحالة */}
@@ -198,7 +215,7 @@ export function LiveMushafRoom({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
           </span>
-          <span>أنت تعرض الآن (صفحة {toAr(page)}). اضغط أي كلمة لتسجيل خطأ/ملاحظة.</span>
+          <span>أنت تعرض الآن (صفحة {toAr(page)}). كليك على كلمة = نموذج كامل · كليك يمين = تسجيل سريع.</span>
           <PresencePill label="الطالب" online={otherOnline} className="ms-auto" />
         </div>
       ) : teacherPage == null ? (
@@ -330,8 +347,12 @@ export function LiveMushafRoom({
                               {...(isPresenter
                                 ? {
                                     role: "button",
-                                    title: "تسجيل خطأ/ملاحظة على هذه الكلمة",
+                                    title: "كليك: نموذج كامل · كليك يمين: تسجيل سريع",
                                     onClick: () => setSel({ surah: w.surah, ayah: w.ayah, word: w.pos, surahName: nameOf(w.surah) }),
+                                    onContextMenu: (e: React.MouseEvent) => {
+                                      e.preventDefault();
+                                      setQmenu({ x: e.clientX, y: e.clientY, surah: w.surah, ayah: w.ayah, word: w.pos });
+                                    },
                                   }
                                 : {})}
                               style={{ fontFamily: `'qcf2-p${w.vpage}'` }}
@@ -387,6 +408,29 @@ export function LiveMushafRoom({
             <Button type="submit" size="sm" disabled={addPending}>{addPending ? "إضافة…" : "تسجيل الخطأ"}</Button>
           </form>
         </Card>
+      )}
+
+      {/* قائمة كليك اليمين السريعة — تسجيل فوري بنوع الخطأ */}
+      {isPresenter && qmenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setQmenu(null)} onContextMenu={(e) => { e.preventDefault(); setQmenu(null); }} />
+          <div className="fixed z-50 w-44 rounded-xl border border-border bg-surface p-1 shadow-lg" style={{ top: qmenu.y, left: qmenu.x }}>
+            <p className="px-2 py-1 text-[11px] text-muted">{nameOf(qmenu.surah)} · آية {toAr(qmenu.ayah)}</p>
+            <div className="flex flex-col">
+              {MISTAKE_TYPE_KEYS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => quickAdd(k)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-right text-sm hover:bg-brand/10"
+                >
+                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${MISTAKE_TYPES[k].dot}`} />
+                  {MISTAKE_TYPES[k].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
