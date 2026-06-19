@@ -30,6 +30,7 @@ export function LessonReportForm({
   juzNav,
   totalPages,
   initialPage,
+  initialMistakes,
 }: {
   classId: string;
   studentName: string;
@@ -37,11 +38,13 @@ export function LessonReportForm({
   juzNav: JuzNav[];
   totalPages: number;
   initialPage: number;
+  /** أخطاء مسجَّلة مسبقاً في المصحف المباشر لهذه الحصة — تظهر تلقائياً في القائمة. */
+  initialMistakes?: Mistake[];
 }) {
   const [state, formAction] = useActionState<ReportState, FormData>(recordLessonReport, {});
   const [attended, setAttended] = useState(true);
   const [scores, setScores] = useState({ m: 80, t: 80, f: 80, c: 80 });
-  const [mistakes, setMistakes] = useState<Mistake[]>([]);
+  const [mistakes, setMistakes] = useState<Mistake[]>(initialMistakes ?? []);
   const [range, setRange] = useState<RangeValue>({
     surahNumber: null,
     surahName: "",
@@ -200,6 +203,11 @@ export function LessonReportForm({
               <h2 className="font-display text-lg font-bold">الأخطاء</h2>
               <Button type="button" size="sm" variant="outline" onClick={addMistake}>+ خطأ</Button>
             </div>
+            {initialMistakes && initialMistakes.length > 0 && (
+              <p className="rounded-lg bg-brand-subtle px-3 py-1.5 text-xs text-brand">
+                أُدرجت {initialMistakes.length.toLocaleString("ar-EG")} أخطاء سُجّلت في المصحف المباشر أثناء الحصة — راجعها أو عدّلها قبل الحفظ.
+              </p>
+            )}
             {mistakes.length === 0 && <p className="text-sm text-muted">لا أخطاء مسجّلة.</p>}
             {mistakes.map((m, i) => (
               <div key={i} className="grid grid-cols-2 gap-2 rounded-xl border border-border p-3 sm:grid-cols-6">

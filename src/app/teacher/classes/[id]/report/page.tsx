@@ -38,14 +38,19 @@ export default async function ReportPage({
 
   const reportNeeded = !cls.has_report;
 
-  // إن وُجد تقرير: اجلبه مع أخطائه للعرض. وإلا: جهّز بيانات المصحف للنموذج.
-  const [nav, progressRows, reportRows, reportMistakes] = reportNeeded
+  type LiveMistake = { surah_number: number; ayah_number: number; mistake_type: string; title: string | null; note: string | null };
+
+  // إن وُجد تقرير: اجلبه مع أخطائه للعرض. وإلا: جهّز بيانات المصحف + أخطاء المصحف المباشر المسجَّلة في هذه الحصة.
+  const [nav, progressRows, reportRows, reportMistakes, liveMistakes] = reportNeeded
     ? await Promise.all([
         getMushafNav(),
         sql<{ page_number: number | null }[]>`
           select page_number from student_mushaf_progress where student_id = ${cls.student_id} limit 1`,
         Promise.resolve([] as ReportDetail[]),
         Promise.resolve([] as ReportMistake[]),
+        sql<LiveMistake[]>`
+          select surah_number, ayah_number, mistake_type, title, note
+          from student_mushaf_mistakes where class_id = ${cls.id} order by created_at`,
       ])
     : await Promise.all([
         Promise.resolve({ surahNav: [], juzNav: [], totalPages: TOTAL_PAGES }),
@@ -62,11 +67,31 @@ export default async function ReportPage({
           join lesson_reports lr on lr.id = sm.lesson_report_id
           where lr.class_id = ${cls.id}
           order by sm.created_at`,
+        Promise.resolve([] as LiveMistake[]),
       ]);
 
   const { surahNav, juzNav, totalPages } = nav;
   const initialPage = Number(progressRows[0]?.page_number ?? 1);
   const report = reportRows[0] ?? null;
+
+  // تحويل أخطاء المصحف المباشر إلى أخطاء أوّلية في نموذج التقرير (تُستثنى "ممتاز" لأنها ليست خطأ).
+  const CAT_MAP: Record<string, "memorization" | "tajweed" | "pronunciation"> = {
+    tajweed: "tajweed",
+    waqf_ibtida: "tajweed",
+    memorization: "memorization",
+    needs_review: "memorization",
+  };
+  const surahNameOf = (n: number) => surahNav.find((s) => s.number === n)?.name_ar ?? "";
+  const initialMistakes = liveMistakes
+    .filter((m) => m.mistake_type !== "excellent")
+    .map((m) => ({
+      category: CAT_MAP[m.mistake_type] ?? ("tajweed" as const),
+      type: m.title ?? "",
+      surah_name: surahNameOf(m.surah_number),
+      ayah_number: String(m.ayah_number),
+      severity: "medium" as const,
+      description: m.note ?? "",
+    }));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -93,6 +118,7 @@ export default async function ReportPage({
           juzNav={juzNav}
           totalPages={totalPages}
           initialPage={initialPage}
+          initialMistakes={initialMistakes}
         />
       )}
     </div>
