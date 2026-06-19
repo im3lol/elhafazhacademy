@@ -1,0 +1,42 @@
+{
+  "name": "elhafazah-academy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "seed:quran": "node scripts/seed-quran.mjs",
+    "fetch:quran": "node scripts/fetch-quran.mjs",
+    "seed:quran-layout": "node scripts/seed-quran-layout.mjs",
+    "fetch:quran-layout": "node scripts/fetch-quran-layout.mjs"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "googleapis": "^173.0.0",
+    "jose": "^6.2.3",
+    "next": "16.2.9",
+    "postgres": "^3.4.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.79.0",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.9"
+  }
+}

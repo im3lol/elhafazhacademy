@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: elhafazah_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: elhafazah
+    ports:
+      - "5433:5432"
+    volumes:
+      - elhafazah_pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d elhafazah"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  elhafazah_pgdata:

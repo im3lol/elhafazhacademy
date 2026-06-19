@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* تفعيل الوضع الداكن باستراتيجية class بدل media فقط */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ===== هوية الحفظة — Emerald + Gold + Ivory ===== */
+:root {
+  /* اللون الأساسي — أخضر زمردي */
+  --brand: #0f6b52;
+  --brand-hover: #0a5440;
+  --brand-subtle: #e6f0ec;
+  --brand-foreground: #ffffff;
+
+  /* اللون الثانوي — ذهبي */
+  --gold: #c9a227;
+  --gold-hover: #b08e1f;
+  --gold-subtle: #f7efd6;
+  --gold-foreground: #1b1b1b;
+
+  /* الوضع الفاتح (عاجي) */
+  --background: #faf8f2;
+  --foreground: #1b1b1b;
+  --surface: #ffffff;
+  --surface-foreground: #1b1b1b;
+  --border: #e9e4d8;
+  --muted: #6b6b6b;
+  --input: #e0dace;
+  --ring: #0f6b52;
+
+  /* ألوان الحالة */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --info: #2563eb;
+
+  --radius: 0.875rem;
+}
+
+.dark {
+  --brand: #2ba77e;
+  --brand-hover: #36b98d;
+  --brand-subtle: #13241e;
+  --brand-foreground: #06160f;
+
+  --gold: #d9b23a;
+  --gold-hover: #e5c155;
+  --gold-subtle: #2a2413;
+  --gold-foreground: #1b1b1b;
+
+  --background: #0e1411;
+  --foreground: #f3f4f2;
+  --surface: #161d19;
+  --surface-foreground: #f3f4f2;
+  --border: #25302a;
+  --muted: #9ba7a0;
+  --input: #25302a;
+  --ring: #2ba77e;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-foreground: var(--brand-foreground);
+
+  --color-gold: var(--gold);
+  --color-gold-hover: var(--gold-hover);
+  --color-gold-subtle: var(--gold-subtle);
+  --color-gold-foreground: var(--gold-foreground);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+
+  --radius-DEFAULT: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  font-family: var(--font-sans), "Segoe UI", system-ui, sans-serif;
+}
+
+/* العناوين بخط Display (ثمانية) */
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display), var(--font-sans), serif;
+}
+
+::selection {
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
