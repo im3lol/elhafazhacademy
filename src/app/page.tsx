@@ -91,10 +91,19 @@ type PkgRow = {
   currency: string;
 };
 
+// تُولَّد عند الطلب (لا وقت البناء) — لتفادي محاولة الاتصال بالقاعدة أثناء build على بيئات بلا DB.
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
-  const pkgs = await sql<PkgRow[]>`
-    select id, name, classes_per_month, price, currency
-    from packages where is_active = true order by price`;
+  // الصفحة العامة لا يجب أن تنهار لو تعذّرت القاعدة لحظياً — تظهر بلا باقات بدلاً من خطأ ٥٠٠.
+  let pkgs: PkgRow[] = [];
+  try {
+    pkgs = await sql<PkgRow[]>`
+      select id, name, classes_per_month, price, currency
+      from packages where is_active = true order by price`;
+  } catch {
+    pkgs = [];
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
