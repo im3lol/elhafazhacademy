@@ -3,15 +3,17 @@ import postgres from "postgres";
 import bcrypt from "bcryptjs";
 import { readFileSync } from "node:fs";
 
-const env = Object.fromEntries(
-  readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-    .split("\n")
-    .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-    .map((l) => {
-      const i = l.indexOf("=");
-      return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-    }),
-);
+const env = process.env.DATABASE_URL
+  ? { DATABASE_URL: process.env.DATABASE_URL }
+  : Object.fromEntries(
+      readFileSync(new URL("../.env.local", import.meta.url), "utf8")
+        .split("\n")
+        .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
+        .map((l) => {
+          const i = l.indexOf("=");
+          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
+        }),
+    );
 
 const sql = postgres(env.DATABASE_URL, { max: 1 });
 

@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+.claude
+storage
+backups
+.env
+.env.*
+!.env.local.example
+npm-debug.log*
+tsconfig.tsbuildinfo
+Dockerfile
+.dockerignore
