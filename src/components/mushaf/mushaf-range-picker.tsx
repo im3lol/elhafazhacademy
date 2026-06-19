@@ -24,6 +24,16 @@ export type RangeValue = {
   ayahTo: number | null;
 };
 
+export type MistakeCategory = "memorization" | "tajweed" | "pronunciation";
+export type ReportMistakeInput = { surahName: string; ayah: number; category: MistakeCategory };
+
+const ERR_CATS: { key: MistakeCategory; label: string }[] = [
+  { key: "tajweed", label: "تجويد" },
+  { key: "memorization", label: "حفظ" },
+  { key: "pronunciation", label: "نطق" },
+];
+const ekey = (s: number, a: number) => `${s}:${a}`;
+
 type PageData = { juz: number | null; words: PageWord[]; surahHeaders: SurahHeader[] };
 
 export function MushafRangePicker({
@@ -33,6 +43,7 @@ export function MushafRangePicker({
   initialPage,
   value,
   onChange,
+  onAddMistake,
 }: {
   surahNav: SurahNav[];
   juzNav: JuzNav[];
@@ -40,6 +51,8 @@ export function MushafRangePicker({
   initialPage: number;
   value: RangeValue;
   onChange: (v: RangeValue) => void;
+  /** عند توفّره: كليك يمين على كلمة يفتح قائمة لإضافة خطأ يُسجَّل في التقرير. */
+  onAddMistake?: (m: ReportMistakeInput) => void;
 }) {
   const [page, setPage] = useState(initialPage);
   const [data, setData] = useState<PageData>({ juz: null, words: [], surahHeaders: [] });
@@ -47,6 +60,8 @@ export function MushafRangePicker({
   const [jump, setJump] = useState("");
   // step: 0 → next ayah click starts a new range; 1 → next click sets the end
   const [step, setStep] = useState<0 | 1>(0);
+  const [menu, setMenu] = useState<{ x: number; y: number; surah: number; ayah: number } | null>(null);
+  const [marked, setMarked] = useState<Set<string>>(new Set());
   const cacheRef = useRef<Record<number, PageData>>({});
 
   useEffect(() => {
@@ -106,6 +121,18 @@ export function MushafRangePicker({
 
   const inRange = (surah: number, ayah: number) => inRangeOf(value, surah, ayah);
 
+  function openMenu(e: React.MouseEvent, surah: number, ayah: number) {
+    if (!onAddMistake) return;
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, surah, ayah });
+  }
+  function addError(category: MistakeCategory) {
+    if (!menu || !onAddMistake) return;
+    onAddMistake({ surahName: nameOf(menu.surah), ayah: menu.ayah, category });
+    setMarked((prev) => new Set(prev).add(ekey(menu.surah, menu.ayah)));
+    setMenu(null);
+  }
+
   return (
     <div className="space-y-3">
       <Card className="flex flex-wrap items-center gap-3">
@@ -150,7 +177,10 @@ export function MushafRangePicker({
 
       <div className="rounded-lg border border-dashed border-gold/50 bg-gold-subtle/40 px-4 py-2 text-center text-sm">
         {value.ayahFrom == null ? (
-          <span className="text-muted">اضغط آية البداية ثم آية النهاية لتحديد ما درسه الطالب.</span>
+          <span className="text-muted">
+            اضغط آية البداية ثم آية النهاية لتحديد ما درسه الطالب.
+            {onAddMistake && <span className="block text-xs">كليك يمين على أي كلمة لإضافة خطأ يُسجَّل في التقرير.</span>}
+          </span>
         ) : (
           <span className="font-medium text-brand">
             المقطع المُدرَّس: {value.surahName} — من آية {toAr(value.ayahFrom)} إلى آية {toAr(value.ayahTo ?? value.ayahFrom)}
@@ -213,14 +243,20 @@ export function MushafRangePicker({
                               </span>
                             );
                           }
+                          const errored = marked.has(ekey(w.surah, w.ayah));
                           return (
                             <span
                               key={i}
                               role="button"
-                              title="تحديد هذه الآية"
+                              title={onAddMistake ? "كليك: تحديد الآية · كليك يمين: إضافة خطأ" : "تحديد هذه الآية"}
                               onClick={() => pick(w.surah, w.ayah)}
+                              onContextMenu={(e) => openMenu(e, w.surah, w.ayah)}
                               style={{ fontFamily: `'qcf2-p${w.vpage}'` }}
-                              className={`cursor-pointer rounded px-0.5 ${hit ? "bg-brand/20" : "hover:bg-brand/10"}`}
+                              className={[
+                                "cursor-pointer rounded px-0.5",
+                                hit ? "bg-brand/20" : "hover:bg-brand/10",
+                                errored ? "underline decoration-danger decoration-2 underline-offset-[6px]" : "",
+                              ].join(" ")}
                             >
                               {w.code}
                             </span>
@@ -238,6 +274,28 @@ export function MushafRangePicker({
           </div>
         </div>
       </div>
+
+      {/* قائمة كليك اليمين لإضافة خطأ للتقرير */}
+      {menu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
+          <div className="fixed z-50 rounded-xl border border-border bg-surface p-1 shadow-lg" style={{ top: menu.y, left: menu.x }}>
+            <p className="px-2 py-1 text-[11px] text-muted">إضافة خطأ · {nameOf(menu.surah)} آية {toAr(menu.ayah)}</p>
+            <div className="flex gap-1">
+              {ERR_CATS.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => addError(c.key)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-brand/10"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

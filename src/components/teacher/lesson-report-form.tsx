@@ -70,6 +70,14 @@ export function LessonReportForm({
     [mistakes],
   );
 
+  // إضافة خطأ من المصحف (كليك يمين على كلمة) — يملأ السورة والآية والتصنيف تلقائياً
+  function addMistakeFromMushaf(m: { surahName: string; ayah: number; category: Mistake["category"] }) {
+    setMistakes((p) => [
+      ...p,
+      { category: m.category, type: "", surah_name: m.surahName, ayah_number: String(m.ayah), severity: "medium", description: "" },
+    ]);
+  }
+
   function addMistake() {
     setMistakes((p) => [
       ...p,
@@ -129,6 +137,7 @@ export function LessonReportForm({
                 initialPage={initialPage}
                 value={range}
                 onChange={setRange}
+                onAddMistake={addMistakeFromMushaf}
               />
             </div>
 
