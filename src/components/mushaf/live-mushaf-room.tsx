@@ -88,8 +88,9 @@ export function LiveMushafRoom({
       setSel(null);
       setMistakeType("tajweed");
     }
+    // نعتمد على مرجع الحالة كاملاً (جديد بعد كل إرسال) كي يُعاد التشغيل لكل خطأ — لا على نص النجاح الثابت.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addState.success]);
+  }, [addState]);
 
   // تحميل بيانات الصفحة
   useEffect(() => {
