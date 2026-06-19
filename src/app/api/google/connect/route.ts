@@ -9,7 +9,7 @@ export async function GET() {
     return new NextResponse("Forbidden", { status: 403 });
   }
   try {
-    return NextResponse.redirect(getAuthUrl());
+    return NextResponse.redirect(await getAuthUrl());
   } catch {
     return NextResponse.redirect(
       new URL("/admin/settings?google=misconfigured", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),

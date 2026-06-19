@@ -3,13 +3,35 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { deleteSetting, setSetting, ACADEMY_PAYMENT_KEY } from "@/lib/settings";
-import { GOOGLE_SETTING_KEY } from "@/lib/google/client";
+import { GOOGLE_SETTING_KEY, GOOGLE_CREDS_KEY } from "@/lib/google/client";
 import { TELEGRAM_SETTING_KEY } from "@/lib/telegram/client";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guards";
 
 async function ensureAdmin() {
   return requirePermission("settings.manage");
+}
+
+/** حفظ بيانات اعتماد Google (Client ID/Secret + redirect) — تُدار من الأدمن وتُخزَّن في القاعدة. */
+export async function saveGoogleCreds(formData: FormData) {
+  const admin = await ensureAdmin();
+  const get = (k: string) => ((formData.get(k) as string) || "").trim();
+  await setSetting(GOOGLE_CREDS_KEY, {
+    client_id: get("client_id"),
+    client_secret: get("client_secret"),
+    redirect_uri: get("redirect_uri") || null,
+  });
+  await logAudit(admin.id, "settings.google_creds_update", "settings", null);
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?saved=google");
+}
+
+/** حذف بيانات اعتماد Google من القاعدة (العودة لمتغيرات البيئة إن وُجدت). */
+export async function clearGoogleCreds() {
+  const admin = await ensureAdmin();
+  await deleteSetting(GOOGLE_CREDS_KEY);
+  await logAudit(admin.id, "settings.google_creds_clear", "settings", null);
+  revalidatePath("/admin/settings");
 }
 
 /** فصل ربط حساب Google. */

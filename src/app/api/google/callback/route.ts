@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const client = oauthClient();
+    const client = await oauthClient();
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { isGoogleConnected } from "@/lib/google/client";
+import { isGoogleConnected, googleCredsConfigured, GOOGLE_CREDS_KEY } from "@/lib/google/client";
 import { getTelegramConfig } from "@/lib/telegram/client";
-import { disconnectGoogle, saveAcademyPayment, saveTelegramConfig, disconnectTelegram } from "@/lib/admin/settings-actions";
+import { disconnectGoogle, saveGoogleCreds, clearGoogleCreds, saveAcademyPayment, saveTelegramConfig, disconnectTelegram } from "@/lib/admin/settings-actions";
 import { getSetting, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
 import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -23,10 +23,12 @@ export default async function AdminSettingsPage({
   const { google, saved } = await searchParams;
   const { connected, email } = await isGoogleConnected();
   const msg = google ? messages[google] : null;
-  const hasCreds = !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+  const hasCreds = await googleCredsConfigured();
+  const gc = await getSetting<{ client_id?: string; client_secret?: string; redirect_uri?: string }>(GOOGLE_CREDS_KEY);
   const pay = await getSetting<AcademyPayment>(ACADEMY_PAYMENT_KEY);
   const tg = await getTelegramConfig();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const defaultRedirect = `${appUrl}/api/google/callback`;
 
   return (
     <div className="space-y-6">
@@ -38,6 +40,7 @@ export default async function AdminSettingsPage({
       {msg && <FormMessage type={msg.type}>{msg.text}</FormMessage>}
       {saved === "payment" && <FormMessage type="success">تم حفظ بيانات التحويل.</FormMessage>}
       {saved === "telegram" && <FormMessage type="success">تم حفظ إعداد تيليجرام.</FormMessage>}
+      {saved === "google" && <FormMessage type="success">تم حفظ بيانات Google.</FormMessage>}
 
       <Card className="space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -56,15 +59,44 @@ export default async function AdminSettingsPage({
           </span>
         </div>
 
-        {!hasCreds && (
-          <FormMessage>
-            بيانات Google غير مضبوطة. أضف <code dir="ltr">GOOGLE_CLIENT_ID</code> و
-            <code dir="ltr"> GOOGLE_CLIENT_SECRET</code> في <code dir="ltr">.env.local</code> ثم أعد تشغيل الخادم.
-          </FormMessage>
-        )}
+        {/* بيانات الاعتماد — تُدار من هنا وتُحفظ في القاعدة */}
+        <form action={saveGoogleCreds} className="space-y-4 border-t border-border pt-4">
+          <p className="text-sm text-muted">
+            أنشئ بيانات OAuth من{" "}
+            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+              Google Cloud Console
+            </a>{" "}
+            (نوع: تطبيق ويب)، وأضِف رابط إعادة التوجيه أدناه في «Authorized redirect URIs».
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Client ID">
+              <Input name="client_id" defaultValue={gc?.client_id ?? ""} dir="ltr" placeholder="xxxx.apps.googleusercontent.com" />
+            </Field>
+            <Field label="Client Secret">
+              <Input name="client_secret" type="password" defaultValue={gc?.client_secret ?? ""} dir="ltr" placeholder="GOCSPX-..." />
+            </Field>
+          </div>
+          <Field label="رابط إعادة التوجيه (Redirect URI)" hint="اتركه فارغاً لاستخدام الافتراضي">
+            <Input name="redirect_uri" defaultValue={gc?.redirect_uri ?? ""} dir="ltr" placeholder={defaultRedirect} />
+          </Field>
+          <div className="rounded-xl bg-background p-3 text-xs text-muted">
+            <span className="font-medium text-foreground">رابط إعادة التوجيه المطلوب إضافته في Google: </span>
+            <span dir="ltr" className="break-all">{gc?.redirect_uri || defaultRedirect}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm">حفظ بيانات Google</Button>
+            {gc?.client_id && (
+              <Button type="submit" size="sm" variant="danger" formAction={clearGoogleCreds}>
+                حذف البيانات
+              </Button>
+            )}
+          </div>
+        </form>
 
+        {/* الربط بعد ضبط البيانات */}
         {connected ? (
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+            <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-medium text-success">الحساب مربوط</span>
             {email && (
               <span className="text-sm text-muted">
                 الحساب: <span className="font-medium text-foreground" dir="ltr">{email}</span>
