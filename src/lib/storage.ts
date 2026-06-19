@@ -1,7 +1,23 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+// في الإنتاج (Vercel) نستخدم Vercel Blob — نظام الملفات هناك للقراءة فقط ومؤقّت.
+// في التطوير نستخدم القرص المحلي. الفاصل: وجود BLOB_READ_WRITE_TOKEN.
+const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 const ROOT = path.join(process.cwd(), process.env.STORAGE_DIR ?? "storage");
+
+const MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  pdf: "application/pdf",
+};
+
+export function mimeFor(relativePath: string) {
+  const ext = relativePath.split(".").pop()?.toLowerCase() ?? "";
+  return MIME[ext] ?? "application/octet-stream";
+}
 
 /** يحفظ بايتات تحت bucket/userId بامتداد محدّد ويُرجع المسار النسبي المخزَّن. */
 export async function saveBuffer(
@@ -11,11 +27,18 @@ export async function saveBuffer(
   ext: string,
 ): Promise<string> {
   const safeExt = (ext || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const filename = `${Date.now()}.${safeExt}`;
-  const dir = path.join(ROOT, bucket, userId);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, filename), buffer);
-  return `${bucket}/${userId}/${filename}`;
+  const key = `${bucket}/${userId}/${Date.now()}.${safeExt}`;
+
+  if (useBlob) {
+    const { put } = await import("@vercel/blob");
+    // المسار ثابت (بلا لاحقة عشوائية) كي نتمكّن من قراءته لاحقاً بالمفتاح نفسه.
+    await put(key, buffer, { access: "public", addRandomSuffix: false, contentType: mimeFor(key) });
+    return key;
+  }
+
+  await fs.mkdir(path.join(ROOT, bucket, userId), { recursive: true });
+  await fs.writeFile(path.join(ROOT, key), buffer);
+  return key;
 }
 
 /** يحفظ ملفاً تحت bucket/userId ويُرجع المسار النسبي المخزَّن. */
@@ -29,8 +52,22 @@ export async function saveFile(
   return saveBuffer(bucket, userId, buffer, ext);
 }
 
-/** يقرأ ملفاً مخزَّناً (مسار نسبي). يمنع الخروج من جذر التخزين. */
+/** يقرأ ملفاً مخزَّناً (مسار نسبي). يمنع الخروج من جذر التخزين محلياً. */
 export async function readFile(relativePath: string): Promise<Buffer | null> {
+  if (useBlob) {
+    try {
+      const { list } = await import("@vercel/blob");
+      const { blobs } = await list({ prefix: relativePath, limit: 1 });
+      const hit = blobs.find((b) => b.pathname === relativePath) ?? blobs[0];
+      if (!hit) return null;
+      const res = await fetch(hit.url);
+      if (!res.ok) return null;
+      return Buffer.from(await res.arrayBuffer());
+    } catch {
+      return null;
+    }
+  }
+
   const full = path.join(ROOT, relativePath);
   if (!full.startsWith(ROOT)) return null; // حماية من path traversal
   try {
@@ -38,17 +75,4 @@ export async function readFile(relativePath: string): Promise<Buffer | null> {
   } catch {
     return null;
   }
-}
-
-const MIME: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  pdf: "application/pdf",
-};
-
-export function mimeFor(relativePath: string) {
-  const ext = relativePath.split(".").pop()?.toLowerCase() ?? "";
-  return MIME[ext] ?? "application/octet-stream";
 }
