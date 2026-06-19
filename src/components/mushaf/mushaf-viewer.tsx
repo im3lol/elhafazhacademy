@@ -72,6 +72,7 @@ export function MushafViewer({
   const [nowPlaying, setNowPlaying] = useState<string | null>(null);
   const [currentPos, setCurrentPos] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<MushafMistake[] | null>(null);
+  const [hover, setHover] = useState<{ ms: MushafMistake[]; x: number; y: number } | null>(null);
   const [jump, setJump] = useState("");
   const [rangeFrom, setRangeFrom] = useState(0);
   const [rangeTo, setRangeTo] = useState(0);
@@ -503,7 +504,19 @@ export function MushafViewer({
                             const marked = wm.length > 0;
                             const playingWord = nowPlaying === k && currentPos === w.pos;
                             return (
-                              <span key={i} className="inline-flex items-center">
+                              <span
+                                key={i}
+                                className="inline-flex items-center"
+                                {...(marked
+                                  ? {
+                                      onMouseEnter: (e: React.MouseEvent<HTMLSpanElement>) => {
+                                        const r = e.currentTarget.getBoundingClientRect();
+                                        setHover({ ms: wm, x: r.left + r.width / 2, y: r.top });
+                                      },
+                                      onMouseLeave: () => setHover(null),
+                                    }
+                                  : {})}
+                              >
                                 <span
                                   role="button"
                                   onClick={() => playWord(w)}
@@ -568,6 +581,24 @@ export function MushafViewer({
               <Button type="button" size="sm" variant="outline" onClick={() => go(page - 1)} disabled={page <= 1}>السابق →</Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* popup صغير عند الوقوف على كلمة خطأ — يُظهر السبب */}
+      {hover && (
+        <div
+          className="pointer-events-none fixed z-[60] w-60 -translate-x-1/2 -translate-y-full rounded-xl border border-border bg-surface p-2.5 text-right shadow-xl"
+          style={{ top: hover.y - 8, left: hover.x }}
+        >
+          {hover.ms.map((m) => (
+            <div key={m.id} className="space-y-0.5 border-b border-border/50 pb-1.5 last:border-0 last:pb-0 [&+&]:pt-1.5">
+              <span className="flex items-center gap-1.5 text-xs font-bold">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${MISTAKE_TYPES[m.mistake_type].dot}`} />
+                {m.title || MISTAKE_TYPES[m.mistake_type].label}
+              </span>
+              {m.note && <p className="text-xs leading-relaxed text-muted">{m.note}</p>}
+            </div>
+          ))}
         </div>
       )}
 
