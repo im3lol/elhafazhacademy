@@ -21,10 +21,10 @@ export default function RootLayout({
       className={`${thmanyahSans.variable} ${thmanyahDisplay.variable} h-full antialiased`}
     >
       <head>
-        {/* تطبيق الوضع الداكن قبل أول رسم لمنع وميض الألوان */}
+        {/* الافتراضي فاتح؛ لا يصير داكناً إلا إن اختاره المستخدم صراحةً (نطبّقه قبل أول رسم لمنع الوميض) */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`,
+            __html: `(function(){try{document.documentElement.classList.toggle('dark',localStorage.getItem('theme')==='dark');}catch(e){}})();`,
           }}
         />
       </head>
