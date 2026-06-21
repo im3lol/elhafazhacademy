@@ -29,10 +29,11 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/elhafazah
       AUTH_SECRET: ${AUTH_SECRET:-elhafazah-local-docker-secret-please-change-32}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:8080}
       NODE_ENV: production
+    # المنفذ على الجهاز قابل للضبط عبر APP_PORT (الافتراضي 8080)؛ الحاوية داخلياً تستمع على 3000
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-8080}:3000"
 
   # بذر بيانات القرآن + حساب الأدمن (يُشغَّل مرّة واحدة عند الحاجة)
   # التشغيل: docker compose --profile seed run --rm seed
