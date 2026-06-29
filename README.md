@@ -1,64 +1,157 @@
 # أكاديمية الحفظة — Elhafazah Academy
 
-منصة إدارة أكاديمية لتحفيظ القرآن وتعليم التجويد. عربية بالكامل (RTL) مع وضع فاتح وداكن، وهوية بصرية بخط وألوان **ثمانية**.
+منصّة تعليمية متكاملة لتحفيظ القرآن الكريم وتعليم التجويد، بثلاثة أدوار (طالب / معلم / أدمن).
+عربية بالكامل (RTL)، وضع فاتح وداكن، وهوية بصرية بخط وألوان **ثمانية** (زمردي/ذهبي).
 
-## التقنيات
+> **تشغيل سريع:** `docker compose up -d --build` ثم `docker compose --profile seed run --rm seed` ← افتح **http://localhost:8080**
 
-- **Next.js 16** (App Router) + **React 19** + **TypeScript**
-- **Tailwind CSS v4** (ألوان ثمانية، RTL، وضع داكن بـ class)
-- **خط ثمانية** عبر `next/font/local` (`src/fonts`)
-- **PostgreSQL عبر Docker Compose** (حاوية واحدة خفيفة) + `postgres.js`
-- **مصادقة محلية**: bcrypt + JWT cookie (`jose`) — بدون خدمات خارجية
-- **تخزين ملفات محلي** على القرص (`storage/`) عبر route handler محمي
+---
 
-## التشغيل محلياً
+## ✨ المزايا حسب الدور
+
+### 👨‍🎓 الطالب
+- **المصحف الشخصي**: عارض صفحي (٦٠٤ صفحات، خط QCF الدقيق)، تشغيل تلاوة من أي كلمة مع تمييز الكلمة الجارية، تنقّل بالسور/الأجزاء، علامات مرجعية، وضع حفظ (تكرار مقطع).
+- **رؤية الأخطاء**: الكلمات التي أخطأ فيها مُبرَزة على المصحف، و**popup عند الوقوف** عليها يُظهر نوع الخطأ وسببه.
+- **صفحة «تقدّمي»**: خريطة الحفظ (شبكة الأجزاء)، النشاط والتقييم الشهري، إنجازات بسجلّ زمني، وتقرير قابل للطباعة/PDF.
+- الدروس والتقارير، الأخطاء، حجز الحصص، الباقة والدفع، الشكاوى، الإشعارات.
+
+### 👨‍🏫 المعلم
+- لوحة تحليلية + **تنبيه الطلاب المتعثّرين**.
+- **تقرير الحصة**: مصحف تفاعلي لتحديد المقطع المُدرَّس، و**كليك يمين على كلمة لإضافة خطأ** يُسجَّل تلقائياً في التقرير، مع الدرجات والملاحظات والواجب.
+- **الغرفة المباشرة** أثناء الحصة: يَعرِض صفحة المصحف فيتابعها الطالب لحظياً، مؤشّر حضور حيّ، وتسجيل أخطاء (كليك/كليك يمين) تظهر للطالب فوراً وتُجمَّع تلقائياً في تقرير نفس الحصة.
+- إدارة مصحف الطالب، الطلاب، الرصيد والمستحقات، طلبات الباقات/الطلاب الجدد.
+
+### 🛡️ الأدمن
+- لوحة تحليلية شاملة، إدارة الطلاب/المعلمين/الباقات/الحصص/القرّاء/الأدوار والصلاحيات.
+- مراجعة المدفوعات والمالية وتصدير CSV، الشكاوى، الإشعارات.
+- متابعة المصحف لكل طالب، وملف طالب كامل (تقدّم + مصحف + حصص).
+- **الإعدادات من اللوحة**: بيانات Google (Client ID/Secret)، تيليجرام، وبيانات التحويل — بلا تعديل ملفات.
+
+---
+
+## 🧱 التقنيات
+| الطبقة | التقنية |
+|---|---|
+| الإطار | **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript** |
+| الواجهة | **Tailwind CSS v4** (RTL، وضع داكن بـ class)، خط **ثمانية** |
+| القاعدة | **PostgreSQL** عبر **postgres.js** |
+| المصادقة | محلية: **bcryptjs + JWT** (jose) في كوكي httpOnly |
+| التخزين | قرص محلي (تطوير) / **Vercel Blob** (إنتاج) — تلقائي حسب `BLOB_READ_WRITE_TOKEN` |
+| الاختبارات | **Vitest** (٤٠ اختباراً) |
+
+---
+
+## 🐳 التشغيل بـ Docker (الطريقة الموصى بها)
+
+يتطلّب **Docker Desktop**. المنظومة كاملة (Next.js + Postgres) في حاويات.
 
 ```bash
+# 1) شغّل كل شيء (يبني التطبيق + يقيم Postgres، ويطبّق الـ schema تلقائياً أول مرة)
+docker compose up -d --build
+
+# 2) ابذُر البيانات مرّة واحدة: القرآن + حساب الأدمن + حسابات تجريبية
+docker compose --profile seed run --rm seed
+
+# 3) افتح المتصفّح
+#    http://localhost:8080
+```
+
+**أوامر مفيدة:**
+```bash
+docker compose down           # إيقاف (تبقى البيانات)
+docker compose down -v        # إيقاف + مسح القاعدة (بداية نظيفة)
+docker compose logs -f app    # سجلّ التطبيق
+APP_PORT=9000 docker compose up -d   # تشغيل على منفذ آخر (Linux/macOS)
+```
+> Windows PowerShell لتغيير المنفذ: `$env:APP_PORT="9000"; docker compose up -d`
+
+تفاصيل أوفى: **[docs/DOCKER.md](docs/DOCKER.md)**.
+
+---
+
+## 🔑 الدخول (حسابات جاهزة بعد البذر)
+
+| الدور | البريد | كلمة المرور |
+|---|---|---|
+| **أدمن** | `admin@elhafazah.test` | `admin1234` |
+| **معلم** | `teacher@demo.test` | `demo1234` |
+| **طالب** | `student@demo.test` | `demo1234` |
+
+> الحسابان التجريبيان (معلم/طالب) مفعّلان ومربوطان (الطالب لدى المعلم وعلى الباقة الأساسية). **غيّر كلمات المرور قبل أي استخدام حقيقي** (الإعدادات → كلمة المرور).
+
+---
+
+## 🗄️ قاعدة البيانات والبذور
+
+- **٣٤ جدولاً** (مستخدمون/أدوار، طلاب/معلمون، باقات/اشتراكات/مدفوعات، حصص/تقارير/أخطاء، مصحف/قرّاء/إنجازات، شكاوى/إشعارات/تدقيق…).
+- ملفات `db/init/*.sql` تُطبَّق **تلقائياً** عند أول تشغيل للقاعدة (schema + باقات/أدوار/قوالب).
+- **بيانات القرآن** (آيات/كلمات/تخطيط) تُبذَر بسكربت (ضمن خطوة الـ seed) — بدونها المصحف فارغ.
+
+| السكربت | الوظيفة |
+|---|---|
+| `seed:quran` / `seed:quran-layout` | نص القرآن + تخطيط الأسطر (QCF) |
+| `seed-admin.mjs` | حساب الأدمن |
+| `seed-demo.mjs` | حسابات معلم/طالب تجريبية |
+
+تفاصيل أوفى: **[docs/DATABASE.md](docs/DATABASE.md)** · النسخ الاحتياطي: **[docs/BACKUP.md](docs/BACKUP.md)**.
+
+---
+
+## 💻 التشغيل المحلي (بدون حاوية التطبيق)
+
+```bash
+docker compose up -d db        # Postgres فقط
+cp .env.local.example .env.local   # واضبط DATABASE_URL و AUTH_SECRET
 npm install
-npm run dev      # http://localhost:3000
-npm run build    # بناء إنتاجي
+npm run seed:quran && npm run seed:quran-layout
+node scripts/seed-admin.mjs && node scripts/seed-demo.mjs
+npm run dev        # http://localhost:3000
+npm run build      # بناء إنتاجي
+npm test           # الاختبارات (٤٠)
+npm run lint       # فحص الجودة
 ```
 
-## قاعدة البيانات (PostgreSQL عبر Docker Compose)
+---
 
-يتطلب **Docker Desktop** شغّالاً. حاوية Postgres واحدة خفيفة.
+## ⚙️ متغيّرات البيئة
 
-```bash
-docker compose up -d          # يشغّل Postgres ويطبّق db/init تلقائياً (مخطط + بذور)
-docker compose down           # إيقاف
-docker compose down -v        # إيقاف + حذف البيانات (إعادة من الصفر)
-node scripts/seed-admin.mjs   # إنشاء حساب أدمن
-npm run seed:quran            # بذر نص القرآن والقرّاء (للمصحف الشخصي)
+| المتغيّر | إلزامي | الوصف |
+|---|:---:|---|
+| `DATABASE_URL` | ✅ | سلسلة اتصال Postgres |
+| `AUTH_SECRET` | ✅ (إنتاج) | سرّ الجلسات — `openssl rand -base64 32` |
+| `NEXT_PUBLIC_APP_URL` | ✅ | عنوان التطبيق (لروابط الاسترجاع/OAuth) |
+| `CRON_SECRET` | موصى | حماية `/api/cron/tick` (تذكيرات + دورة حياة الحصص) |
+| `BLOB_READ_WRITE_TOKEN` | إنتاج | تخزين الملفات على Vercel Blob (يُضبط تلقائياً عند ربط Blob) |
+| `GOOGLE_*` | اختياري | بديل عن ضبط Google من لوحة الأدمن |
+
+القالب الكامل: `.env.local.example`. النشر على Vercel: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+---
+
+## 🗂️ بنية المشروع
+
+```
+src/app/            صفحات App Router (student / teacher / admin / api / classes)
+src/components/     مكوّنات الواجهة (mushaf, dashboard, teacher, student, ui…)
+src/lib/            المنطق: db, auth, mushaf, student, teacher, google, notifications…
+db/init/            schema + بذور SQL (تُطبَّق تلقائياً)
+db/seed/            بيانات القرآن (JSON)
+scripts/            سكربتات البذر والنسخ الاحتياطي
+tests/              اختبارات Vitest (unit + integration)
+docs/               التوثيق التفصيلي
+Dockerfile · docker-compose.yml   دوكرة المنظومة
 ```
 
-ملفات SQL في `db/init/` تُطبَّق تلقائياً عند أول تشغيل (volume فارغ):
+---
+
+## 📚 التوثيق
 
 | الملف | المحتوى |
-| --- | --- |
-| `01_schema.sql` | كل الجداول (٢٢) + الفهارس |
-| `02_seed.sql` | الأدوار، الصلاحيات، الباقات، قوالب الإشعارات |
-
-- اتصال: `postgres://postgres:postgres@127.0.0.1:5433/elhafazah` (في `.env.local` كـ `DATABASE_URL`)
-- psql: `docker exec -it elhafazah_db psql -U postgres -d elhafazah`
-
-## القرارات المعتمدة (V1)
-
-- البنية: **PostgreSQL مباشر عبر Docker** (بدون Supabase — أخف وأسرع)
-- المصادقة: **bcrypt + JWT cookie** (التحكم بالوصول في طبقة التطبيق)
-- التخزين: **ملفات محلية** على القرص عبر route handler محمي
-- الدخول: **بريد + كلمة مرور** (الهاتف لاحقاً)
-- الدفع: **تحويل يدوي + رفع إثبات** ومراجعة الإدارة
-- العملة/التوقيت: **EGP / Africa/Cairo**
-- Google Meet: **Google Cloud Console + OAuth** لحساب الأكاديمية (Workspace غير مطلوب)
-
-راجع `elhafazah_academy_implementation.md` لوثيقة التنفيذ الكاملة.
-
-## التوثيق
-
-| الملف | المحتوى |
-| --- | --- |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | النشر والإنتاج — متغيّرات البيئة وقائمة التحقّق |
-| [docs/MUSHAF.md](docs/MUSHAF.md) | وحدة المصحف الشخصي — المصادر والبذر والاعتماديات |
+|---|---|
+| [docs/DOCKER.md](docs/DOCKER.md) | دوكرة المنظومة — الخدمات والأوامر والمنافذ والبذر |
+| [docs/DATABASE.md](docs/DATABASE.md) | قاعدة البيانات — الجداول والبذور والبيانات التجريبية |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | النشر على Vercel — متغيّرات البيئة وقائمة التحقّق |
+| [docs/MUSHAF.md](docs/MUSHAF.md) | وحدة المصحف — المصادر والبذر والاعتماديات |
 | [docs/BACKUP.md](docs/BACKUP.md) | النسخ الاحتياطي والاستعادة |
 
-فحص الصحّة للنشر/المراقبة: `GET /api/health`.
+فحص الصحّة: `GET /api/health` → `{"status":"ok","db":"up"}`.

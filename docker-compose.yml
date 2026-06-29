@@ -47,7 +47,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/elhafazah
-    command: sh -c "node scripts/seed-quran.mjs && node scripts/seed-quran-layout.mjs && node scripts/seed-admin.mjs"
+    command: sh -c "node scripts/seed-quran.mjs && node scripts/seed-quran-layout.mjs && node scripts/seed-admin.mjs && node scripts/seed-demo.mjs"
 
 volumes:
   elhafazah_pgdata:
