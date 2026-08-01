@@ -8,10 +8,37 @@
 |---|---|
 | داخل Docker (التطبيق) | `postgres://postgres:postgres@db:5432/elhafazah` |
 | من الجهاز (psql/سكربتات) | `postgres://postgres:postgres@127.0.0.1:5433/elhafazah` |
+| الإنتاج (Supabase) | من لوحة Supabase ← Connect ← **Transaction pooler** |
 
 ```bash
 docker exec -it elhafazah_db psql -U postgres -d elhafazah
 ```
+
+## Supabase (الإنتاج)
+
+مشروع `elhafazah-academy` — المنطقة `eu-central-1` — <https://ifysybvpkliwsrahlefh.supabase.co>
+
+المخطط الكامل (٣٤ جدولاً + الأدوار والصلاحيات والباقات وقوالب الإشعارات) مطبَّق هناك عبر migrations.
+التطبيق يتصل بـ `postgres.js` مباشرةً — لا يستخدم مكتبة Supabase ولا مصادقتها — فالربط **تغيير سلسلة اتصال فقط**:
+
+1. من لوحة Supabase: **Connect ← Transaction pooler** وانسخ السلسلة (المنفذ `6543`).
+2. ضَع كلمة مرور القاعدة مكان `[YOUR-PASSWORD]` واضبط `DATABASE_URL` في بيئة الاستضافة.
+3. أضِف `?sslmode=require` في آخر السلسلة.
+4. ابذر القرآن والأدمن مرة واحدة: `npm run seed:quran && npm run seed:quran-layout && node scripts/seed-admin.mjs`.
+
+> استخدم **Transaction pooler** لا الاتصال المباشر: بيئات serverless تفتح اتصالات كثيرة قصيرة العمر.
+
+### الأمان: RLS مفعّل بلا سياسات — عن قصد
+
+Supabase يفتح واجهة REST على schema `public` لأي شخص يملك المفتاح العام (anon). هذا التطبيق لا يستخدم
+تلك الواجهة ولا مصادقة Supabase — تحكّم الوصول كله في طبقة التطبيق. لذلك فُعِّل RLS على كل الجداول
+**بلا أي سياسة**، وسُحبت صلاحيات `anon` و`authenticated` على schema public:
+
+- عبر المفتاح العام: لا شيء مقروء ولا مكتوب (وإلا لَقُرِئ `users` بما فيه `password_hash`).
+- عبر `DATABASE_URL` بدور `postgres` (مالك الجداول): يتجاوز RLS طبيعياً — التطبيق يعمل كما هو.
+
+تحذيرات `RLS Enabled No Policy` في لوحة Supabase **متوقَّعة وهي المطلوب هنا**، وليست خللاً يُصلَح
+بإضافة سياسات. أي سياسة تُضاف تفتح ثغرة ما دامت الواجهة العامة غير مستخدمة.
 
 ## التهيئة التلقائية
 

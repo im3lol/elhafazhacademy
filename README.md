@@ -117,7 +117,7 @@ npm run lint       # فحص الجودة
 
 | المتغيّر | إلزامي | الوصف |
 |---|:---:|---|
-| `DATABASE_URL` | ✅ | سلسلة اتصال Postgres |
+| `DATABASE_URL` | ✅ | سلسلة اتصال Postgres (للإنتاج: Transaction pooler من Supabase — [التفاصيل](docs/DATABASE.md#supabase-الإنتاج)) |
 | `AUTH_SECRET` | ✅ (إنتاج) | سرّ الجلسات — `openssl rand -base64 32` |
 | `NEXT_PUBLIC_APP_URL` | ✅ | عنوان التطبيق (لروابط الاسترجاع/OAuth) |
 | `CRON_SECRET` | موصى | حماية `/api/cron/tick` (تذكيرات + دورة حياة الحصص) |
