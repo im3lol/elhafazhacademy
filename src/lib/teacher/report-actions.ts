@@ -23,14 +23,21 @@ function flatten(issues: readonly { path: PropertyKey[]; message: string }[]) {
   return fe;
 }
 
+/**
+ * حالات لا يُقبل بعدها تقرير.
+ * الغياب (no_show_*) ليس منها عمداً: المهمة الدورية تستنتجه من نقر رابط الدخول
+ * فقط، فتُعلّم به حصصاً جرت فعلاً — والتقرير المتأخر هو ما يصحّحها.
+ */
+const CLOSED_STATUSES = ["completed", "cancelled", "rescheduled"];
+
 /** يتحقق أن المعلم الحالي يملك الحصة، ويُرجع (teacherId, class). */
 async function ownedClass(classId: string) {
   const u = await getSessionUser();
   if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
   const [teacher] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
   if (!teacher) throw new Error("لا يوجد ملف معلم");
-  const [cls] = await sql<{ id: string; student_id: string; teacher_id: string; subscription_id: string | null }[]>`
-    select id, student_id, teacher_id, subscription_id from classes where id = ${classId} limit 1`;
+  const [cls] = await sql<{ id: string; student_id: string; teacher_id: string; subscription_id: string | null; status: string }[]>`
+    select id, student_id, teacher_id, subscription_id, status from classes where id = ${classId} limit 1`;
   if (!cls || cls.teacher_id !== teacher.id) throw new Error("الحصة غير موجودة أو لا تخصّك");
   return { teacherId: teacher.id, cls };
 }
@@ -46,6 +53,11 @@ export async function recordLessonReport(
   }
   const d = parsed.data;
   const { teacherId, cls } = await ownedClass(d.class_id);
+
+  // حصة أُغلقت سلفاً: إرسال النموذج مرتين كان يخصم حصتين من الباقة
+  if (CLOSED_STATUSES.includes(cls.status)) {
+    return { error: "هذه الحصة مغلقة بالفعل (سُجِّل تقريرها أو أُلغيت)." };
+  }
 
   // غياب الطالب → تحديث الحالة فقط
   if (!d.attended) {
@@ -66,31 +78,39 @@ export async function recordLessonReport(
     d.memorization_score, d.tajweed_score, d.fluency_score, d.commitment_score,
   );
 
-  await sql.begin(async (tx) => {
-    const [report] = await tx<{ id: string }[]>`
-      insert into lesson_reports (class_id, student_id, teacher_id, lesson_type, surah_name,
-        ayah_from, ayah_to, memorization_score, tajweed_score, fluency_score, commitment_score,
-        overall_score, teacher_notes, homework)
-      values (${cls.id}, ${cls.student_id}, ${teacherId}, ${d.lesson_type}, ${d.surah_name || null},
-        ${d.ayah_from ?? null}, ${d.ayah_to ?? null}, ${d.memorization_score}, ${d.tajweed_score},
-        ${d.fluency_score}, ${d.commitment_score}, ${overall}, ${d.teacher_notes || null}, ${d.homework || null})
-      returning id`;
+  try {
+    await sql.begin(async (tx) => {
+      const [report] = await tx<{ id: string }[]>`
+        insert into lesson_reports (class_id, student_id, teacher_id, lesson_type, surah_name,
+          ayah_from, ayah_to, memorization_score, tajweed_score, fluency_score, commitment_score,
+          overall_score, teacher_notes, homework)
+        values (${cls.id}, ${cls.student_id}, ${teacherId}, ${d.lesson_type}, ${d.surah_name || null},
+          ${d.ayah_from ?? null}, ${d.ayah_to ?? null}, ${d.memorization_score}, ${d.tajweed_score},
+          ${d.fluency_score}, ${d.commitment_score}, ${overall}, ${d.teacher_notes || null}, ${d.homework || null})
+        returning id`;
 
-    for (const m of mistakes) {
-      await tx`
-        insert into student_mistakes (student_id, lesson_report_id, mistake_category, mistake_type,
-          surah_name, ayah_number, description, severity, status)
-        values (${cls.student_id}, ${report.id}, ${m.category}, ${m.type},
-          ${m.surah_name || null}, ${m.ayah_number ?? null}, ${m.description || null}, ${m.severity}, 'new')`;
-    }
+      for (const m of mistakes) {
+        await tx`
+          insert into student_mistakes (student_id, lesson_report_id, mistake_category, mistake_type,
+            surah_name, ayah_number, description, severity, status)
+          values (${cls.student_id}, ${report.id}, ${m.category}, ${m.type},
+            ${m.surah_name || null}, ${m.ayah_number ?? null}, ${m.description || null}, ${m.severity}, 'new')`;
+      }
 
-    await tx`update classes set status = 'completed' where id = ${cls.id}`;
-    if (cls.subscription_id) {
-      await tx`update student_subscriptions set classes_used = classes_used + 1 where id = ${cls.subscription_id}`;
+      await tx`update classes set status = 'completed' where id = ${cls.id}`;
+      if (cls.subscription_id) {
+        await tx`update student_subscriptions set classes_used = classes_used + 1 where id = ${cls.subscription_id}`;
+      }
+      // احتساب مستحق المعلم لهذه الحصة
+      await ensureEarningForClass(tx, cls.id);
+    });
+  } catch (e) {
+    // القيد الفريد على lesson_reports.class_id — إرسالان متزامنان لنفس الحصة
+    if ((e as { code?: string })?.code === "23505") {
+      return { error: "سُجِّل تقرير هذه الحصة بالفعل." };
     }
-    // احتساب مستحق المعلم لهذه الحصة
-    await ensureEarningForClass(tx, cls.id);
-  });
+    throw e;
+  }
 
   // إشعار الطالب بصدور تقرير حصته (وواجبه إن وُجد)
   const homeworkLine = d.homework ? ` الواجب: ${d.homework}` : "";

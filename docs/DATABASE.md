@@ -22,8 +22,15 @@ docker exec -it elhafazah_db psql -U postgres -d elhafazah
 | `01_schema.sql` | كل الجداول (٣٤) + الفهارس + triggers |
 | `02_seed.sql` | الأدوار، الصلاحيات، الباقات الافتراضية، قوالب الإشعارات |
 | `03_app_settings.sql` | إعدادات التطبيق الأساسية |
+| `04_constraints.sql` | قيود وفهارس أُضيفت بعد الإصدار الأول |
 
 > أعدت التهيئة من الصفر: `docker compose down -v && docker compose up -d`.
+
+**على قاعدة قائمة** (لا يُعاد تشغيل `db/init` إلا على volume فارغ) طبّق الملفات المضافة يدوياً — كلها idempotent:
+
+```bash
+docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/04_constraints.sql
+```
 
 ## الجداول (٣٤)
 

@@ -8,6 +8,7 @@ import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
 import { formatClassTime, parseAcademyLocal } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
 import { materializeRecurringSlots } from "@/lib/booking/recurring";
+import { activeSubscription } from "@/lib/finance/subscriptions";
 
 export type BookingState = { error?: string; success?: string };
 
@@ -91,11 +92,9 @@ export async function bookSlot(_prev: BookingState, formData: FormData): Promise
   if (student.status !== "Active") return { error: "حسابك غير مفعّل. أكمل الدفع أولاً." };
   if (!student.teacher_id) return { error: "لم يُعيَّن لك معلم بعد." };
 
-  // الاشتراك النشط — منع تجاوز حصص الباقة
-  const [sub] = await sql<{ id: string; classes_total: number; classes_used: number }[]>`
-    select id, classes_total, classes_used from student_subscriptions
-    where student_id = ${student.id} and status = 'active' order by created_at desc limit 1`;
-  if (sub && sub.classes_total > 0 && sub.classes_used >= sub.classes_total) {
+  // الاشتراك النشط — منع تجاوز حصص الباقة (المكتملة + المحجوزة)
+  const sub = await activeSubscription(sql, student.id);
+  if (sub?.exhausted) {
     return { error: "نفدت حصص باقتك. جدّد الاشتراك للحجز." };
   }
 

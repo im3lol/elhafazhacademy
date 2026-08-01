@@ -7,12 +7,14 @@ import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { FormMessage, Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { requirePermissionPage } from "@/lib/auth/guards";
 
 const messages: Record<string, { type: "error" | "success"; text: string }> = {
   connected: { type: "success", text: "تم ربط حساب Google بنجاح." },
   error: { type: "error", text: "تعذّر الربط. حاول مرة أخرى." },
   no_refresh: { type: "error", text: "لم نستلم صلاحية دائمة. افصل الربط من حساب Google ثم أعد المحاولة." },
   misconfigured: { type: "error", text: "بيانات Google (Client ID/Secret) غير مضبوطة في الخادم." },
+  state_mismatch: { type: "error", text: "طلب ربط غير مطابق أو منتهي. ابدأ الربط من هذه الصفحة مجدداً." },
 };
 
 export default async function AdminSettingsPage({
@@ -20,6 +22,9 @@ export default async function AdminSettingsPage({
 }: {
   searchParams: Promise<{ google?: string; saved?: string }>;
 }) {
+  // الصفحة تعرض client_secret وbot_token — لا تُفتح لأي أدمن، بل لمن يملك إدارة الإعدادات
+  await requirePermissionPage("settings.manage");
+
   const { google, saved } = await searchParams;
   const { connected, email } = await isGoogleConnected();
   const msg = google ? messages[google] : null;

@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { requirePermissionPage } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
 import {
@@ -28,6 +29,9 @@ function egp(v: string | null | number) {
 }
 
 export default async function AdminFinancePage() {
+  // الإجراءات محمية بـ finance.view — والعرض (إيرادات ومستحقات) مثلها
+  await requirePermissionPage("finance.view");
+
   const [[ov], teachers] = await Promise.all([
     sql<Overview[]>`
       select

@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { google } from "googleapis";
 import { getSessionUser } from "@/lib/auth/session";
-import { oauthClient, GOOGLE_SETTING_KEY } from "@/lib/google/client";
+import { oauthClient, GOOGLE_SETTING_KEY, GOOGLE_STATE_COOKIE } from "@/lib/google/client";
 import { setSetting } from "@/lib/settings";
 
 /** يستقبل رمز OAuth، يبادله بالتوكنات، ويخزّن refresh token. */
@@ -12,9 +13,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", appUrl));
   }
 
-  const code = new URL(request.url).searchParams.get("code");
+  const params = new URL(request.url).searchParams;
+  const code = params.get("code");
   if (!code) {
     return NextResponse.redirect(new URL("/admin/settings?google=error", appUrl));
+  }
+
+  // يجب أن يكون هذا الرد لطلب ربط بدأناه من هذا المتصفح (وإلا فهو رمز مدسوس)
+  const store = await cookies();
+  const expected = store.get(GOOGLE_STATE_COOKIE)?.value;
+  store.delete(GOOGLE_STATE_COOKIE);
+  if (!expected || params.get("state") !== expected) {
+    return NextResponse.redirect(new URL("/admin/settings?google=state_mismatch", appUrl));
   }
 
   try {

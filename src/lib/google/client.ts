@@ -43,14 +43,26 @@ export async function oauthClient() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-/** رابط منح الإذن (للأدمن). */
+/** كوكي الـ state لتدفق OAuth (قصير العمر، يُقارَن عند العودة). */
+export const GOOGLE_STATE_COOKIE = "google_oauth_state";
+
+/**
+ * رابط منح الإذن (للأدمن) + قيمة state لربط الطلب بالمتصفح نفسه.
+ * بدونها يستطيع مهاجم دفع أدمن مسجَّل إلى /api/google/callback برمز حسابه هو،
+ * فتُخزَّن توكناته وتُنشأ حصص الأكاديمية على تقويمه.
+ */
 export async function getAuthUrl() {
   const client = await oauthClient();
-  return client.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: GOOGLE_SCOPES,
-  });
+  const state = crypto.randomUUID();
+  return {
+    url: client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: GOOGLE_SCOPES,
+      state,
+    }),
+    state,
+  };
 }
 
 /** هل تم ربط حساب Google (يوجد refresh token)؟ */

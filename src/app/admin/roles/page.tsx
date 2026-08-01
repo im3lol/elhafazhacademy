@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
-import { hasPermission } from "@/lib/auth/permissions";
+import { requirePermissionPage } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
@@ -20,8 +18,7 @@ const roleLabel: Record<string, string> = {
 };
 
 export default async function AdminRolesPage() {
-  const u = await getSessionUser();
-  if (!u || !(await hasPermission(u.id, "roles.manage"))) redirect("/admin/dashboard");
+  await requirePermissionPage("roles.manage");
 
   const [roles, perms, rolePerms, admins] = await Promise.all([
     sql<Role[]>`select id, name, description from roles order by name`,

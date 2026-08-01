@@ -8,6 +8,7 @@ import { createMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
 import { formatClassTime, parseAcademyLocal, ACADEMY_TZ } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
+import { activeSubscription } from "@/lib/finance/subscriptions";
 
 export type ClassState = {
   error?: string;
@@ -41,12 +42,9 @@ export async function scheduleClass(_prev: ClassState, formData: FormData): Prom
   if (isNaN(start.getTime())) return { fieldErrors: { start_time: "موعد غير صالح" } };
   const end = new Date(start.getTime() + d.duration_minutes * 60000);
 
-  // الاشتراك النشط للطالب — لربط الحصة به ومنع تجاوز حصص الباقة
-  const [sub] = await sql<{ id: string; classes_total: number; classes_used: number }[]>`
-    select id, classes_total, classes_used from student_subscriptions
-    where student_id = ${d.student_id} and status = 'active'
-    order by created_at desc limit 1`;
-  if (sub && sub.classes_total > 0 && sub.classes_used >= sub.classes_total) {
+  // الاشتراك النشط للطالب — لربط الحصة به ومنع تجاوز حصص الباقة (المكتملة + المحجوزة)
+  const sub = await activeSubscription(sql, d.student_id);
+  if (sub?.exhausted) {
     return { error: "نفدت حصص باقة هذا الطالب. يلزم تجديد الاشتراك قبل جدولة حصة جديدة." };
   }
   const subscriptionId = sub?.id ?? null;
