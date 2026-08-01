@@ -7,6 +7,7 @@ export type TickResult = {
   reminded: number;
   wentLive: number;
   missed: number;
+  ended: number;
   slotsGenerated: number;
   subsExpired: number;
 };
@@ -53,26 +54,39 @@ export async function runClassTick(): Promise<TickResult> {
       and start_time <= now()
       and (end_time is null or end_time > now())`;
 
-  // ٣) تحديد الغياب للحصص المنتهية التي لم يحضرها أحد الطرفين (مهلة ١٥ دقيقة)
+  // ٣) تحديد الغياب للحصص المنتهية التي لم يحضرها أحد الطرفين (مهلة ١٥ دقيقة).
+  //    الحضور = نقر رابط Meet أو الظهور في غرفة المصحف المباشرة؛ الاكتفاء بالنقر
+  //    كان يُسجّل غياباً على حصص جرت فعلاً في الغرفة (أو بلا رابط Meet أصلاً).
   const missed = await sql`
     update classes set status = case
-        when teacher_join_clicked_at is null then 'no_show_teacher'
+        when teacher_join_clicked_at is null and live_teacher_seen_at is null then 'no_show_teacher'
         else 'no_show_student' end
     where status in ('scheduled', 'meet_created', 'meet_sent', 'waiting', 'live')
       and end_time is not null
       and end_time < now() - interval '15 minutes'
-      and (teacher_join_clicked_at is null or student_join_clicked_at is null)`;
+      and ((teacher_join_clicked_at is null and live_teacher_seen_at is null)
+        or (student_join_clicked_at is null and live_student_seen_at is null))`;
 
-  // ٤) توليد أوقات الحجز من قوالب التوفّر الأسبوعي المتكررة للأسابيع القادمة
+  // ٤) الحصص التي حضرها الطرفان وانتهت ولم يُسجَّل تقريرها: تُغلق كـ"انتهت".
+  //    بدونها تبقى "جارية" إلى الأبد وتظل غرفة البث مفتوحة. التقرير ما زال
+  //    ممكناً بعدها فتصير "مكتملة".
+  const ended = await sql`
+    update classes set status = 'ended'
+    where status in ('scheduled', 'meet_created', 'meet_sent', 'waiting', 'live')
+      and end_time is not null
+      and end_time < now() - interval '15 minutes'`;
+
+  // ٥) توليد أوقات الحجز من قوالب التوفّر الأسبوعي المتكررة للأسابيع القادمة
   const slotsGenerated = await materializeRecurringSlots();
 
-  // ٥) إنهاء الاشتراكات المنقضية/المستهلكة كي يفتح التجديد
+  // ٦) إنهاء الاشتراكات المنقضية/المستهلكة كي يفتح التجديد
   const subsExpired = await expireStaleSubscriptions(sql);
 
   return {
     reminded: due.length,
     wentLive: live.count,
     missed: missed.count,
+    ended: ended.count,
     slotsGenerated,
     subsExpired,
   };

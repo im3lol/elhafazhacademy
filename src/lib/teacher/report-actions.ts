@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { currentTeacherId } from "@/lib/auth/guards";
 import { reportSchema, mistakesArraySchema, computeOverall } from "@/lib/validators/report";
 import { ensureEarningForClass } from "@/lib/finance/earnings";
 import { notifyStudent } from "@/lib/notifications/service";
@@ -32,14 +32,11 @@ const CLOSED_STATUSES = ["completed", "cancelled", "rescheduled"];
 
 /** يتحقق أن المعلم الحالي يملك الحصة، ويُرجع (teacherId, class). */
 async function ownedClass(classId: string) {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
-  const [teacher] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
-  if (!teacher) throw new Error("لا يوجد ملف معلم");
+  const teacherId = await currentTeacherId();
   const [cls] = await sql<{ id: string; student_id: string; teacher_id: string; subscription_id: string | null; status: string }[]>`
     select id, student_id, teacher_id, subscription_id, status from classes where id = ${classId} limit 1`;
-  if (!cls || cls.teacher_id !== teacher.id) throw new Error("الحصة غير موجودة أو لا تخصّك");
-  return { teacherId: teacher.id, cls };
+  if (!cls || cls.teacher_id !== teacherId) throw new Error("الحصة غير موجودة أو لا تخصّك");
+  return { teacherId, cls };
 }
 
 /** تسجيل تقرير حصة + الأخطاء + تحديث الحالة والاستهلاك. */

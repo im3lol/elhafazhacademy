@@ -6,6 +6,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { classStatusLabel, classStatusClass, formatClassTime } from "@/lib/class-status";
 import { BarChart } from "@/components/admin/dashboard-charts";
 import { getAtRiskStudents } from "@/lib/teacher/at-risk";
+import { arNum } from "@/lib/utils";
 
 type TeacherRow = { id: string; full_name: string; status: string; experience_years: number | null };
 type Counts = {
@@ -13,7 +14,6 @@ type Counts = {
   completed: number; avg_rating: number | null; pending: string | null;
 };
 
-const ar = (n: number | string | null) => Number(n ?? 0).toLocaleString("ar-EG");
 const dayLabel = (d: string) => {
   try { return new Date(d).toLocaleDateString("ar-EG", { weekday: "short" }); } catch { return d; }
 };
@@ -51,12 +51,12 @@ export default async function TeacherDashboard() {
 
   const stats = counts
     ? [
-        { label: "طلابي", value: `${ar(counts.active_students)} / ${ar(counts.students)}` },
-        { label: "حصص اليوم", value: ar(counts.today), accent: true },
-        { label: "هذا الأسبوع", value: ar(counts.week) },
-        { label: "حصص مكتملة", value: ar(counts.completed) },
-        { label: "متوسط تقييم طلابي", value: counts.avg_rating == null ? "—" : `${ar(counts.avg_rating)}٪` },
-        { label: "مستحقات معلّقة", value: `${ar(counts.pending)} ج.م`, accent: "gold" as const },
+        { label: "طلابي", value: `${arNum(counts.active_students)} / ${arNum(counts.students)}` },
+        { label: "حصص اليوم", value: arNum(counts.today), accent: true },
+        { label: "هذا الأسبوع", value: arNum(counts.week) },
+        { label: "حصص مكتملة", value: arNum(counts.completed) },
+        { label: "متوسط تقييم طلابي", value: counts.avg_rating == null ? "—" : `${arNum(counts.avg_rating)}٪` },
+        { label: "مستحقات معلّقة", value: `${arNum(counts.pending)} ج.م`, accent: "gold" as const },
       ]
     : [];
 
@@ -68,7 +68,9 @@ export default async function TeacherDashboard() {
         from classes c join students s on s.id = c.student_id
         where c.teacher_id = ${teacher.id}
           and c.status not in ('completed','cancelled')
-          and c.start_time >= now() - interval '1 hour'
+          -- الحصص المنتهية بلا تقرير تبقى ظاهرة أسبوعاً كي يسجّلها المعلم
+          and (c.start_time >= now() - interval '1 hour'
+            or (c.status = 'ended' and c.start_time > now() - interval '7 days'))
         order by c.start_time asc limit 6`
     : [];
 
@@ -106,7 +108,7 @@ export default async function TeacherDashboard() {
         <Card className="border-warning/30 bg-warning/5">
           <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
             <span aria-hidden>⚠️</span> طلاب يحتاجون انتباهك
-            <span className="text-sm font-normal text-muted">({ar(atRisk.length)})</span>
+            <span className="text-sm font-normal text-muted">({arNum(atRisk.length)})</span>
           </h2>
           <div className="space-y-2">
             {atRisk.map((s) => (

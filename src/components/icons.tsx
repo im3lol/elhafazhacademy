@@ -94,12 +94,6 @@ export const IconCheck = (p: IconProps) => (
   </Base>
 );
 
-export const IconArrowLeft = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M19 12H5M12 19l-7-7 7-7" />
-  </Base>
-);
-
 export const IconClock = (p: IconProps) => (
   <Base {...p}>
     <circle cx="12" cy="12" r="9" />

@@ -2,17 +2,17 @@ import { Card } from "@/components/ui/card";
 import { BarChart } from "@/components/admin/dashboard-charts";
 import { PrintButton } from "@/components/student/print-button";
 import type { StudentProgress } from "@/lib/student/progress";
+import { arNum } from "@/lib/utils";
 
-const ar = (n: number) => n.toLocaleString("ar-EG");
 const arDate = (s: string) => new Date(s).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" });
 
 /** عرض تقدّم الطالب (خريطة الحفظ + النشاط/التقييم الشهري + الإنجازات) — قابل لإعادة الاستخدام للطالب/المعلم/الأدمن. */
 export function StudentProgressView({ data, studentName }: { data: StudentProgress; studentName?: string }) {
   const kpis = [
-    { label: "الأجزاء المحفوظة", value: `${ar(data.memorized)} / ٣٠`, color: "text-gold" },
-    { label: "إجمالي الحصص", value: ar(data.totalLessons), color: "text-brand" },
-    { label: "أفضل تقييم", value: data.bestScore == null ? "—" : `${ar(data.bestScore)}٪`, color: "text-brand" },
-    { label: "أخطاء تم تجاوزها", value: ar(data.resolved), color: "text-success" },
+    { label: "الأجزاء المحفوظة", value: `${arNum(data.memorized)} / ٣٠`, color: "text-gold" },
+    { label: "إجمالي الحصص", value: arNum(data.totalLessons), color: "text-brand" },
+    { label: "أفضل تقييم", value: data.bestScore == null ? "—" : `${arNum(data.bestScore)}٪`, color: "text-brand" },
+    { label: "أخطاء تم تجاوزها", value: arNum(data.resolved), color: "text-success" },
   ];
 
   return (
@@ -45,7 +45,7 @@ export function StudentProgressView({ data, studentName }: { data: StudentProgre
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-lg font-bold">خريطة الحفظ</h2>
-          <span className="text-sm text-muted">{ar(data.memorized)} من ٣٠ جزءاً</span>
+          <span className="text-sm text-muted">{arNum(data.memorized)} من ٣٠ جزءاً</span>
         </div>
         <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
           {Array.from({ length: 30 }, (_, i) => {
@@ -53,12 +53,12 @@ export function StudentProgressView({ data, studentName }: { data: StudentProgre
             return (
               <div
                 key={i}
-                title={`الجزء ${ar(i + 1)}`}
+                title={`الجزء ${arNum(i + 1)}`}
                 className={`grid aspect-square place-items-center rounded-md text-xs font-bold ${
                   done ? "bg-gold/25 text-gold ring-1 ring-gold/40" : "bg-surface text-muted/50"
                 }`}
               >
-                {ar(i + 1)}
+                {arNum(i + 1)}
               </div>
             );
           })}
@@ -85,7 +85,7 @@ export function StudentProgressView({ data, studentName }: { data: StudentProgre
           ) : (
             <BarChart
               data={data.months.map((m) => ({ label: m.label, value: m.avg }))}
-              format={(n) => `${ar(n)}٪`}
+              format={(n) => `${arNum(n)}٪`}
               barClassName="bg-gold"
             />
           )}
@@ -97,7 +97,7 @@ export function StudentProgressView({ data, studentName }: { data: StudentProgre
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">الإنجازات</h2>
           <span className="rounded-full bg-brand-subtle px-3 py-0.5 text-sm font-bold text-brand">
-            {ar(data.earnedCount)} / {ar(data.achievements.length)}
+            {arNum(data.earnedCount)} / {arNum(data.achievements.length)}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -49,3 +49,23 @@ export async function createMeetEvent(input: {
   if (!eventId || !meetLink) return null;
   return { eventId, meetLink };
 }
+
+/**
+ * يحذف حدث تقويم (عند إلغاء الحصة) — وإلا بقي الاجتماع في تقويم الأكاديمية.
+ * لا يرمي: فشل الحذف لا يمنع إلغاء الحصة. يُرجع نجاح المحاولة.
+ */
+export async function deleteMeetEvent(eventId: string): Promise<boolean> {
+  if (!eventId) return false;
+  try {
+    const auth = await authedClient();
+    if (!auth) return false;
+    await google.calendar({ version: "v3", auth }).events.delete({
+      calendarId: "primary",
+      eventId,
+      sendUpdates: "none",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

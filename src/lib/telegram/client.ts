@@ -13,12 +13,6 @@ export async function getTelegramConfig(): Promise<TelegramConfig | null> {
   return getSetting<TelegramConfig>(TELEGRAM_SETTING_KEY);
 }
 
-/** هل تكامل تيليجرام مفعّل (توكن موجود)؟ */
-export async function isTelegramEnabled(): Promise<boolean> {
-  const c = await getTelegramConfig();
-  return !!c?.bot_token;
-}
-
 /** إرسال رسالة عبر بوت تيليجرام — best-effort، لا يرمي استثناء. */
 export async function sendTelegram(chatId: string, text: string): Promise<boolean> {
   const c = await getTelegramConfig();

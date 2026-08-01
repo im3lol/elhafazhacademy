@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { classSchema } from "@/lib/validators/class";
-import { createMeetEvent } from "@/lib/google/meet";
+import { createMeetEvent, deleteMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
 import { formatClassTime, parseAcademyLocal, ACADEMY_TZ } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
@@ -124,10 +124,33 @@ export async function rescheduleClass(formData: FormData) {
   revalidatePath("/admin/classes");
 }
 
-/** إلغاء حصة. */
+/** إلغاء حصة: يُعيد فتح وقت المعلم، ويحذف حدث Meet، ويُشعر الطرفين. */
 export async function cancelClass(formData: FormData) {
-  await ensureAdmin();
+  const admin = await ensureAdmin();
   const id = formData.get("id") as string;
-  await sql`update classes set status = 'cancelled' where id = ${id}`;
+  if (!id) return;
+
+  const [c] = await sql<{ student_id: string; teacher_id: string; start_time: string; google_calendar_event_id: string | null; status: string }[]>`
+    select student_id, teacher_id, start_time, google_calendar_event_id, status
+    from classes where id = ${id} limit 1`;
+  if (!c || c.status === "cancelled") return;
+
+  await sql.begin(async (tx) => {
+    await tx`update classes set status = 'cancelled' where id = ${id}`;
+    // الوقت كان محجوزاً بهذه الحصة — يعود متاحاً للحجز بدل أن يضيع على المعلم
+    await tx`
+      update class_slots set status = 'open', booked_class_id = null
+      where booked_class_id = ${id} and status = 'booked' and start_time > now()`;
+  });
+
+  if (c.google_calendar_event_id) await deleteMeetEvent(c.google_calendar_event_id);
+
+  const when = formatClassTime(c.start_time);
+  await Promise.all([
+    notifyStudent(c.student_id, "أُلغيت حصتك ❌", `أُلغيت حصة ${when}. يمكنك حجز موعد آخر.`),
+    notifyTeacher(c.teacher_id, "أُلغيت حصة ❌", `أُلغيت حصة ${when}.`),
+  ]);
+  await logAudit(admin.id, "class.cancel", "class", id, { status: "cancelled" });
+
   revalidatePath("/admin/classes");
 }

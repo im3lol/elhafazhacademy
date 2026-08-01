@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { deleteSetting, setSetting, ACADEMY_PAYMENT_KEY } from "@/lib/settings";
 import { GOOGLE_SETTING_KEY, GOOGLE_CREDS_KEY } from "@/lib/google/client";
 import { TELEGRAM_SETTING_KEY } from "@/lib/telegram/client";
+import { EMAIL_SETTING_KEY } from "@/lib/email/client";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guards";
 
@@ -70,6 +71,16 @@ export async function saveTelegramConfig(formData: FormData) {
   await logAudit(admin.id, "settings.telegram_update", "settings", null);
   revalidatePath("/admin/settings");
   redirect("/admin/settings?saved=telegram");
+}
+
+/** حفظ إعدادات البريد (Resend) — بدونها لا يصل رابط إعادة تعيين كلمة المرور. */
+export async function saveEmailConfig(formData: FormData) {
+  const admin = await ensureAdmin();
+  const get = (k: string) => ((formData.get(k) as string) || "").trim();
+  await setSetting(EMAIL_SETTING_KEY, { api_key: get("api_key"), from: get("from") });
+  await logAudit(admin.id, "settings.email_update", "settings", null);
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?saved=email");
 }
 
 /** فصل تكامل تيليجرام بالكامل (حذف الإعداد). */

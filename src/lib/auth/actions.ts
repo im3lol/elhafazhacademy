@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { sendEmail } from "@/lib/email/client";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { createSession, destroySession, homeForType } from "@/lib/auth/session";
+import { createSession, homeForType } from "@/lib/auth/session";
 import { checkThrottle, recordFailure, clearThrottle } from "@/lib/auth/throttle";
 import {
   loginSchema,
@@ -136,12 +136,6 @@ export async function login(
     email: user.email,
   });
   redirect(homeForType(user.user_type));
-}
-
-/** تسجيل الخروج (server action). */
-export async function signOut() {
-  await destroySession();
-  redirect("/login");
 }
 
 /** نسيت كلمة المرور — ينشئ رمزاً ويرسل رابط إعادة التعيين (رسالة عامة دائماً). */

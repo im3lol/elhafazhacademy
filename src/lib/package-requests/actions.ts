@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
+import { currentTeacherId } from "@/lib/auth/guards";
 
 export type RequestState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -50,25 +51,21 @@ export async function cancelPackageRequest(formData: FormData) {
 
 /** مراجعة المعلم (موافقة/رفض مبدئي). */
 export async function teacherReviewRequest(formData: FormData) {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
+  const teacherId = await currentTeacherId();
   const id = formData.get("request_id") as string;
   const decision = formData.get("decision") as string;
   const note = ((formData.get("note") as string) || "").trim() || null;
-
-  const [teacher] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
-  if (!teacher) throw new Error("لا يوجد ملف معلم");
 
   if (decision === "approve") {
     await sql`
       update package_change_requests
       set teacher_status = 'approved', teacher_note = ${note}, teacher_reviewed_at = now()
-      where id = ${id} and teacher_id = ${teacher.id} and teacher_status = 'pending'`;
+      where id = ${id} and teacher_id = ${teacherId} and teacher_status = 'pending'`;
   } else {
     await sql`
       update package_change_requests
       set teacher_status = 'rejected', teacher_note = ${note}, teacher_reviewed_at = now(), final_status = 'rejected'
-      where id = ${id} and teacher_id = ${teacher.id} and teacher_status = 'pending'`;
+      where id = ${id} and teacher_id = ${teacherId} and teacher_status = 'pending'`;
   }
   revalidatePath("/teacher/package-requests");
 }

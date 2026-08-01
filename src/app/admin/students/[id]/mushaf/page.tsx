@@ -6,8 +6,8 @@ import { buttonClasses } from "@/components/ui/button";
 import { AdminStudentMushaf } from "@/components/mushaf/admin-student-mushaf";
 import { getMushafNav } from "@/lib/mushaf/nav";
 import { type MushafMistake } from "@/lib/mushaf/data";
+import { arNum } from "@/lib/utils";
 
-const ar = (n: number | null | undefined) => Number(n ?? 0).toLocaleString("ar-EG");
 
 export default async function AdminStudentMushafPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,8 +34,8 @@ export default async function AdminStudentMushafPage({ params }: { params: Promi
         <div>
           <h1 className="font-display text-3xl font-black">مصحف {student.full_name}</h1>
           <p className="mt-1 text-muted">
-            عرض للمتابعة (قراءة فقط){progressRows[0]?.page_number ? ` · آخر موضع: صفحة ${ar(progressRows[0]?.page_number)}` : ""}
-            {openCount > 0 ? ` · ${ar(openCount)} ملاحظة مفتوحة` : ""}
+            عرض للمتابعة (قراءة فقط){progressRows[0]?.page_number ? ` · آخر موضع: صفحة ${arNum(progressRows[0]?.page_number)}` : ""}
+            {openCount > 0 ? ` · ${arNum(openCount)} ملاحظة مفتوحة` : ""}
           </p>
         </div>
         <Link href={`/admin/students/${id}`} className={buttonClasses({ size: "sm", variant: "outline" })}>

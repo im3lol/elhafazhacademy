@@ -26,6 +26,18 @@ export async function requireActiveAdmin(): Promise<SessionUser> {
   return u;
 }
 
+/**
+ * معرّف المعلم الحالي (لـ server actions) — يرمي إن لم يكن معلماً أو بلا ملف.
+ * صفحات /teacher لا تحتاجه للحماية (الدور مفروض في layout) بل للبحث فقط.
+ */
+export async function currentTeacherId(): Promise<string> {
+  const u = await getSessionUser();
+  if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
+  const [t] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
+  if (!t) throw new Error("لا يوجد ملف معلم");
+  return t.id;
+}
+
 /** يفرض صلاحية لعرض صفحة (لا لتنفيذ إجراء) — يحوّل بدل أن يرمي. */
 export async function requirePermissionPage(key: string): Promise<SessionUser> {
   const u = await requireActiveAdmin();

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { MISTAKE_TYPES, type MistakeType } from "@/lib/mushaf/data";
+import { arNum } from "@/lib/utils";
 
-const ar = (n: number | string | null) => Number(n ?? 0).toLocaleString("ar-EG");
 
 type Summary = { with_progress: number; open_notes: number; resolved_notes: number; students_with_notes: number };
 type ByType = { mistake_type: MistakeType; n: number };
@@ -30,10 +30,10 @@ export default async function AdminMushafPage() {
 
   const byTypeMap = new Map(byType.map((r) => [r.mistake_type, r.n]));
   const stats = [
-    { label: "طلاب لديهم آخر موضع", value: ar(sum?.with_progress) },
-    { label: "ملاحظات مفتوحة", value: ar(sum?.open_notes), accent: true },
-    { label: "ملاحظات مُعالَجة", value: ar(sum?.resolved_notes) },
-    { label: "طلاب بحاجة لمراجعة", value: ar(sum?.students_with_notes) },
+    { label: "طلاب لديهم آخر موضع", value: arNum(sum?.with_progress) },
+    { label: "ملاحظات مفتوحة", value: arNum(sum?.open_notes), accent: true },
+    { label: "ملاحظات مُعالَجة", value: arNum(sum?.resolved_notes) },
+    { label: "طلاب بحاجة لمراجعة", value: arNum(sum?.students_with_notes) },
   ];
 
   return (
@@ -61,7 +61,7 @@ export default async function AdminMushafPage() {
                 <span className={`inline-block h-2.5 w-2.5 rounded-full ${MISTAKE_TYPES[k].dot}`} />
                 {MISTAKE_TYPES[k].label}
               </span>
-              <span className="font-display text-lg font-bold">{ar(byTypeMap.get(k) ?? 0)}</span>
+              <span className="font-display text-lg font-bold">{arNum(byTypeMap.get(k) ?? 0)}</span>
             </Card>
           ))}
         </div>
@@ -85,16 +85,16 @@ export default async function AdminMushafPage() {
               <tbody>
                 {top.map((t, i) => (
                   <tr key={t.id} className="border-b border-border/60 transition-colors last:border-0 hover:bg-surface/60">
-                    <td className="p-3 text-muted tabular-nums">{ar(i + 1)}</td>
+                    <td className="p-3 text-muted tabular-nums">{arNum(i + 1)}</td>
                     <td className="p-3 font-medium">
                       <Link href={`/admin/students/${t.id}`} className="hover:text-brand hover:underline">
                         {t.full_name}
                       </Link>
                     </td>
-                    <td className="p-3 text-muted">{t.page ? `صفحة ${ar(t.page)}` : "—"}</td>
+                    <td className="p-3 text-muted">{t.page ? `صفحة ${arNum(t.page)}` : "—"}</td>
                     <td className="p-3">
                       <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-bold text-warning">
-                        {ar(t.open_notes)} ملاحظة
+                        {arNum(t.open_notes)} ملاحظة
                       </span>
                     </td>
                   </tr>

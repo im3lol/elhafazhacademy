@@ -21,7 +21,8 @@ export default async function TeacherAvailabilityPage() {
     ? await Promise.all([
         sql<Slot[]>`
           select id, start_time, duration_minutes, status from class_slots
-          where teacher_id = ${teacher.id} and start_time > now() - interval '1 day'
+          where teacher_id = ${teacher.id} and status <> 'cancelled'
+            and start_time > now() - interval '1 day'
           order by start_time asc`,
         sql<Recurring[]>`
           select id, weekday, time_of_day, duration_minutes from recurring_slots

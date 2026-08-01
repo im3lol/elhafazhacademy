@@ -98,7 +98,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await sql`
     update classes set live_page = ${page}, live_updated_at = now()
     where id = ${id}
-      and status not in ('completed','cancelled','no_show_student','no_show_teacher')
+      and status not in ('completed','ended','cancelled','rescheduled','no_show_student','no_show_teacher')
       and (live_page is distinct from ${page})`;
   return NextResponse.json({ ok: true, page });
 }

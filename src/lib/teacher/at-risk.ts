@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { arNum } from "@/lib/utils";
 
 export type AtRiskStudent = { id: string; full_name: string; reasons: string[] };
 
@@ -11,7 +12,6 @@ type Row = {
   recent_no_shows: number;
 };
 
-const ar = (n: number) => n.toLocaleString("ar-EG");
 const DAY = 86_400_000;
 
 // عتبات الرصد
@@ -39,12 +39,12 @@ export async function getAtRiskStudents(userId: string): Promise<AtRiskStudent[]
   for (const r of rows) {
     const reasons: string[] = [];
     const score = r.last_score == null ? null : Number(r.last_score);
-    if (score != null && score < LOW_SCORE) reasons.push(`تقييم منخفض (${ar(score)}٪)`);
+    if (score != null && score < LOW_SCORE) reasons.push(`تقييم منخفض (${arNum(score)}٪)`);
     if (r.last_completed && now - new Date(r.last_completed).getTime() > INACTIVE_DAYS * DAY) {
-      reasons.push(`بلا نشاط منذ أكثر من ${ar(INACTIVE_DAYS)} يوماً`);
+      reasons.push(`بلا نشاط منذ أكثر من ${arNum(INACTIVE_DAYS)} يوماً`);
     }
-    if (Number(r.open_notes) >= OPEN_NOTES) reasons.push(`${ar(Number(r.open_notes))} ملاحظة مفتوحة`);
-    if (Number(r.recent_no_shows) >= NO_SHOWS) reasons.push(`${ar(Number(r.recent_no_shows))} غياب مؤخراً`);
+    if (Number(r.open_notes) >= OPEN_NOTES) reasons.push(`${arNum(Number(r.open_notes))} ملاحظة مفتوحة`);
+    if (Number(r.recent_no_shows) >= NO_SHOWS) reasons.push(`${arNum(Number(r.recent_no_shows))} غياب مؤخراً`);
     if (reasons.length) out.push({ id: r.id, full_name: r.full_name, reasons });
   }
   return out;

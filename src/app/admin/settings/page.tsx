@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { isGoogleConnected, googleCredsConfigured, GOOGLE_CREDS_KEY } from "@/lib/google/client";
 import { getTelegramConfig } from "@/lib/telegram/client";
-import { disconnectGoogle, saveGoogleCreds, clearGoogleCreds, saveAcademyPayment, saveTelegramConfig, disconnectTelegram } from "@/lib/admin/settings-actions";
+import { getEmailConfig } from "@/lib/email/client";
+import { disconnectGoogle, saveGoogleCreds, clearGoogleCreds, saveAcademyPayment, saveTelegramConfig, disconnectTelegram, saveEmailConfig } from "@/lib/admin/settings-actions";
 import { getSetting, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
 import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export default async function AdminSettingsPage({
   const gc = await getSetting<{ client_id?: string; client_secret?: string; redirect_uri?: string }>(GOOGLE_CREDS_KEY);
   const pay = await getSetting<AcademyPayment>(ACADEMY_PAYMENT_KEY);
   const tg = await getTelegramConfig();
+  const em = await getEmailConfig();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const defaultRedirect = `${appUrl}/api/google/callback`;
 
@@ -46,6 +48,7 @@ export default async function AdminSettingsPage({
       {saved === "payment" && <FormMessage type="success">تم حفظ بيانات التحويل.</FormMessage>}
       {saved === "telegram" && <FormMessage type="success">تم حفظ إعداد تيليجرام.</FormMessage>}
       {saved === "google" && <FormMessage type="success">تم حفظ بيانات Google.</FormMessage>}
+      {saved === "email" && <FormMessage type="success">تم حفظ إعداد البريد.</FormMessage>}
 
       <Card className="space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -190,6 +193,38 @@ export default async function AdminSettingsPage({
             <Textarea name="instructions" defaultValue={pay?.instructions ?? ""} placeholder="أرسل صورة إيصال التحويل بعد الدفع." />
           </Field>
           <Button type="submit" size="sm">حفظ البيانات</Button>
+        </form>
+      </Card>
+
+      <Card>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold">البريد الإلكتروني (Resend)</h2>
+            <p className="mt-1 text-sm text-muted">
+              بدونه لا يصل رابط إعادة تعيين كلمة المرور للمستخدمين.
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              em?.api_key ? "bg-success/15 text-success" : "bg-muted/15 text-muted"
+            }`}
+          >
+            {em?.api_key ? "مفعّل" : "غير مفعّل"}
+          </span>
+        </div>
+        <form action={saveEmailConfig} className="space-y-4 border-t border-border pt-4">
+          <Field label="مفتاح Resend (API Key)">
+            <Input name="api_key" defaultValue={em?.api_key ?? ""} dir="ltr" placeholder="re_..." />
+          </Field>
+          <Field label="عنوان المُرسِل" hint="لا بد أن يكون نطاقاً موثّقاً في Resend.">
+            <Input
+              name="from"
+              defaultValue={em?.from ?? ""}
+              dir="ltr"
+              placeholder="أكاديمية الحفظة <noreply@yourdomain.com>"
+            />
+          </Field>
+          <Button type="submit" size="sm">حفظ إعداد البريد</Button>
         </form>
       </Card>
     </div>

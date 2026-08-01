@@ -11,11 +11,6 @@ export async function getEmailConfig(): Promise<EmailConfig | null> {
   return getSetting<EmailConfig>(EMAIL_SETTING_KEY);
 }
 
-export async function isEmailEnabled(): Promise<boolean> {
-  const c = await getEmailConfig();
-  return !!c?.api_key && !!c.from;
-}
-
 /** إرسال بريد عبر Resend HTTP API — best-effort، لا يرمي استثناء. */
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const c = await getEmailConfig();

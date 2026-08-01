@@ -9,20 +9,13 @@ import { formatClassTime, parseAcademyLocal } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
 import { materializeRecurringSlots } from "@/lib/booking/recurring";
 import { activeSubscription } from "@/lib/finance/subscriptions";
+import { currentTeacherId } from "@/lib/auth/guards";
 
 export type BookingState = { error?: string; success?: string };
 
-async function currentTeacher() {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
-  const [t] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
-  if (!t) throw new Error("لا يوجد ملف معلم");
-  return t.id;
-}
-
 /** المعلم يضيف وقتاً متاحاً للحجز. */
 export async function addSlot(_prev: BookingState, formData: FormData): Promise<BookingState> {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const start = parseAcademyLocal(formData.get("start_time") as string);
   const duration = Number(formData.get("duration_minutes") ?? 45) || 45;
   if (isNaN(start.getTime())) return { error: "موعد غير صالح" };
@@ -35,17 +28,23 @@ export async function addSlot(_prev: BookingState, formData: FormData): Promise<
   return { success: "تمت إضافة الوقت المتاح." };
 }
 
-/** المعلم يحذف وقتاً متاحاً (غير محجوز). */
+/**
+ * المعلم يحذف وقتاً متاحاً (غير محجوز).
+ * يُلغى ولا يُحذف: الصف المحذوف يعيده مولّد القوالب المتكررة في أول دورة،
+ * فلا يستطيع المعلم تعطيل أسبوع واحد. الصف الملغى يبقى فيمنع إعادة التوليد.
+ */
 export async function removeSlot(formData: FormData) {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const id = formData.get("slot_id") as string;
-  await sql`delete from class_slots where id = ${id} and teacher_id = ${teacherId} and status = 'open'`;
+  await sql`
+    update class_slots set status = 'cancelled'
+    where id = ${id} and teacher_id = ${teacherId} and status = 'open'`;
   revalidatePath("/teacher/availability");
 }
 
 /** المعلم يضيف قالب توفّر أسبوعياً متكرراً (يُولِّد أوقاتاً للأسابيع القادمة فوراً). */
 export async function addRecurringSlot(_prev: BookingState, formData: FormData): Promise<BookingState> {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const weekday = Number(formData.get("weekday"));
   const timeOfDay = String(formData.get("time_of_day") ?? "");
   const duration = Number(formData.get("duration_minutes") ?? 45) || 45;
@@ -69,7 +68,7 @@ export async function addRecurringSlot(_prev: BookingState, formData: FormData):
 
 /** المعلم يوقف قالباً متكرراً (يحذف أيضاً أوقاته القادمة غير المحجوزة). */
 export async function removeRecurringSlot(formData: FormData) {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const id = formData.get("recurring_id") as string;
   await sql.begin(async (tx) => {
     await tx`

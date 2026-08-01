@@ -143,7 +143,7 @@ create table classes (
   subscription_id uuid references student_subscriptions(id) on delete set null,
   start_time timestamptz not null, end_time timestamptz, timezone text default 'Africa/Cairo',
   status text not null default 'scheduled'
-    check (status in ('scheduled','meet_created','meet_sent','waiting','live','completed','no_show_student','no_show_teacher','cancelled','rescheduled')),
+    check (status in ('scheduled','meet_created','meet_sent','waiting','live','ended','completed','no_show_student','no_show_teacher','cancelled','rescheduled')),
   google_calendar_event_id text, meet_link text, meet_created_at timestamptz, meet_sent_at timestamptz,
   student_join_clicked_at timestamptz, teacher_join_clicked_at timestamptz, admin_monitor_joined_at timestamptz,
   -- غرفة المصحف المباشرة: الصفحة التي يعرضها المعلم ليتابعها الطالب أثناء الحصة + حضور لحظي

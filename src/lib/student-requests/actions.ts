@@ -3,18 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
-
-async function currentTeacher() {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
-  const [t] = await sql<{ id: string }[]>`select id from teachers where user_id = ${u.id} limit 1`;
-  if (!t) throw new Error("لا يوجد ملف معلم");
-  return t.id;
-}
+import { currentTeacherId } from "@/lib/auth/guards";
 
 /** المعلم يطلب استقبال طالب بلا معلم. */
 export async function requestStudent(formData: FormData) {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const studentId = formData.get("student_id") as string;
 
   const [student] = await sql<{ id: string; teacher_id: string | null; status: string }[]>`
@@ -34,7 +27,7 @@ export async function requestStudent(formData: FormData) {
 
 /** المعلم يلغي طلبه المعلّق. */
 export async function cancelStudentRequest(formData: FormData) {
-  const teacherId = await currentTeacher();
+  const teacherId = await currentTeacherId();
   const id = formData.get("request_id") as string;
   await sql`
     update student_teacher_requests set status = 'cancelled'
