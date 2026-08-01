@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { academyDay, parseAcademyLocal } from "@/lib/class-status";
 
 /** عدد الأسابيع المقدّمة التي تُولَّد لها أوقات من القوالب المتكررة. */
 export const HORIZON_WEEKS = 4;
@@ -11,19 +12,20 @@ type Recurring = {
   duration_minutes: number;
 };
 
-/** يحسب مواعيد التكرار القادمة (بتوقيت الخادم) خلال أفق الأسابيع المحدّد. */
+/** يحسب مواعيد التكرار القادمة (بتوقيت الأكاديمية) خلال أفق الأسابيع المحدّد. */
 export function nextOccurrences(weekday: number, timeOfDay: string, weeks = HORIZON_WEEKS): Date[] {
-  const [h, m] = timeOfDay.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return [];
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeOfDay)) return [];
   const now = new Date();
+  // نبدأ من تاريخ اليوم بتوقيت الأكاديمية عند منتصف نهار UTC:
+  // إضافة ٢٤ ساعة منه لا تعبر حدّ اليوم مهما تغيّر التوقيت الصيفي.
+  const cursor = new Date(`${academyDay(now).date}T12:00:00Z`);
   const out: Date[] = [];
   for (let i = 0; i < weeks * 7; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
-    if (d.getDay() !== weekday) continue;
-    d.setHours(h, m, 0, 0);
-    if (d.getTime() <= now.getTime()) continue;
-    out.push(d);
+    const day = new Date(cursor.getTime() + i * 86400000);
+    if (day.getUTCDay() !== weekday) continue;
+    const start = parseAcademyLocal(`${day.toISOString().slice(0, 10)}T${timeOfDay}`);
+    if (start.getTime() <= now.getTime()) continue;
+    out.push(start);
   }
   return out;
 }

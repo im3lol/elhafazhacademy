@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { notifyStudent } from "@/lib/notifications/service";
+import { expireStaleSubscriptions } from "@/lib/finance/subscriptions";
 
 async function ensureAdmin() {
   const u = await getSessionUser();
@@ -34,6 +35,8 @@ export async function approvePayment(formData: FormData) {
     await tx`update students set status = 'Active' where id = ${payment.student_id}`;
 
     if (student?.package_id) {
+      // ينهي الاشتراك المستهلَك/المنقضي أولاً، وإلا اعتُبر الطالب مشتركاً فلا يُفعَّل تجديده
+      await expireStaleSubscriptions(tx, student.id);
       const [existing] = await tx<{ id: string }[]>`
         select id from student_subscriptions where student_id = ${student.id} and status = 'active' limit 1`;
       if (!existing) {

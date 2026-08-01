@@ -19,6 +19,16 @@ export function mimeFor(relativePath: string) {
   return MIME[ext] ?? "application/octet-stream";
 }
 
+/**
+ * مسار نسبي آمن: بلا مقاطع `..` وغير مطلق.
+ * بدونه يستطيع مستخدم مصرَّح له بمجلده الخروج منه إلى مجلد غيره
+ * (فحص الملكية يقع على أول مقطع فقط، بينما join يفكّ `..` لاحقاً).
+ */
+export function isSafeRelative(relativePath: string) {
+  if (!relativePath || path.isAbsolute(relativePath)) return false;
+  return !relativePath.split(/[\\/]/).includes("..");
+}
+
 /** يحفظ بايتات تحت bucket/userId بامتداد محدّد ويُرجع المسار النسبي المخزَّن. */
 export async function saveBuffer(
   bucket: string,
@@ -31,8 +41,9 @@ export async function saveBuffer(
 
   if (useBlob) {
     const { put } = await import("@vercel/blob");
+    // private: إثباتات الدفع مستندات مالية — تُقرأ فقط عبر الراوت الذي يفحص الصلاحية.
     // المسار ثابت (بلا لاحقة عشوائية) كي نتمكّن من قراءته لاحقاً بالمفتاح نفسه.
-    await put(key, buffer, { access: "public", addRandomSuffix: false, contentType: mimeFor(key) });
+    await put(key, buffer, { access: "private", addRandomSuffix: false, contentType: mimeFor(key) });
     return key;
   }
 
@@ -41,35 +52,24 @@ export async function saveBuffer(
   return key;
 }
 
-/** يحفظ ملفاً تحت bucket/userId ويُرجع المسار النسبي المخزَّن. */
-export async function saveFile(
-  bucket: string,
-  userId: string,
-  file: File,
-): Promise<string> {
-  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const buffer = Buffer.from(await file.arrayBuffer());
-  return saveBuffer(bucket, userId, buffer, ext);
-}
-
-/** يقرأ ملفاً مخزَّناً (مسار نسبي). يمنع الخروج من جذر التخزين محلياً. */
+/** يقرأ ملفاً مخزَّناً (مسار نسبي). يمنع الخروج من المجلد المقصود. */
 export async function readFile(relativePath: string): Promise<Buffer | null> {
+  if (!isSafeRelative(relativePath)) return null;
+
   if (useBlob) {
     try {
-      const { list } = await import("@vercel/blob");
-      const { blobs } = await list({ prefix: relativePath, limit: 1 });
-      const hit = blobs.find((b) => b.pathname === relativePath) ?? blobs[0];
-      if (!hit) return null;
-      const res = await fetch(hit.url);
-      if (!res.ok) return null;
-      return Buffer.from(await res.arrayBuffer());
+      const { get } = await import("@vercel/blob");
+      const res = await get(relativePath, { access: "private" });
+      if (!res || res.statusCode !== 200) return null;
+      return Buffer.from(await new Response(res.stream).arrayBuffer());
     } catch {
       return null;
     }
   }
 
   const full = path.join(ROOT, relativePath);
-  if (!full.startsWith(ROOT)) return null; // حماية من path traversal
+  // المقارنة بفاصل المسار: بدونه يمرّ مجلد شقيق مثل storage-backup
+  if (full !== ROOT && !full.startsWith(ROOT + path.sep)) return null;
   try {
     return await fs.readFile(full);
   } catch {

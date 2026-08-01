@@ -1,8 +1,15 @@
 import { sql } from "@/lib/db";
 import { notify } from "@/lib/notifications/service";
 import { materializeRecurringSlots } from "@/lib/booking/recurring";
+import { expireStaleSubscriptions } from "@/lib/finance/subscriptions";
 
-export type TickResult = { reminded: number; wentLive: number; missed: number; slotsGenerated: number };
+export type TickResult = {
+  reminded: number;
+  wentLive: number;
+  missed: number;
+  slotsGenerated: number;
+  subsExpired: number;
+};
 
 type DueClass = {
   class_id: string;
@@ -59,5 +66,14 @@ export async function runClassTick(): Promise<TickResult> {
   // ٤) توليد أوقات الحجز من قوالب التوفّر الأسبوعي المتكررة للأسابيع القادمة
   const slotsGenerated = await materializeRecurringSlots();
 
-  return { reminded: due.length, wentLive: live.count, missed: missed.count, slotsGenerated };
+  // ٥) إنهاء الاشتراكات المنقضية/المستهلكة كي يفتح التجديد
+  const subsExpired = await expireStaleSubscriptions(sql);
+
+  return {
+    reminded: due.length,
+    wentLive: live.count,
+    missed: missed.count,
+    slotsGenerated,
+    subsExpired,
+  };
 }

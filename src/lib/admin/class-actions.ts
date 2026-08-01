@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { classSchema } from "@/lib/validators/class";
 import { createMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
-import { formatClassTime } from "@/lib/class-status";
+import { formatClassTime, parseAcademyLocal, ACADEMY_TZ } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
 
 export type ClassState = {
@@ -37,7 +37,7 @@ export async function scheduleClass(_prev: ClassState, formData: FormData): Prom
   if (!parsed.success) return { fieldErrors: flatten(parsed.error.issues), error: "تحقق من الحقول" };
   const d = parsed.data;
 
-  const start = new Date(d.start_time);
+  const start = parseAcademyLocal(d.start_time);
   if (isNaN(start.getTime())) return { fieldErrors: { start_time: "موعد غير صالح" } };
   const end = new Date(start.getTime() + d.duration_minutes * 60000);
 
@@ -60,7 +60,7 @@ export async function scheduleClass(_prev: ClassState, formData: FormData): Prom
         summary: "حصة قرآن — أكاديمية الحفظة",
         startISO: start.toISOString(),
         endISO: end.toISOString(),
-        timeZone: "Africa/Cairo",
+        timeZone: ACADEMY_TZ,
       });
       if (ev) {
         meetLink = ev.meetLink;
@@ -100,7 +100,7 @@ export async function scheduleClass(_prev: ClassState, formData: FormData): Prom
 export async function rescheduleClass(formData: FormData) {
   const admin = await ensureAdmin();
   const id = formData.get("id") as string;
-  const start = new Date(formData.get("start_time") as string);
+  const start = parseAcademyLocal(formData.get("start_time") as string);
   if (!id || isNaN(start.getTime())) return;
 
   const [c] = await sql<{ student_id: string; teacher_id: string; start_time: string; end_time: string | null; meet_link: string | null }[]>`

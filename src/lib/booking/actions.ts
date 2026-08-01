@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { createMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
-import { formatClassTime } from "@/lib/class-status";
+import { formatClassTime, parseAcademyLocal } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
 import { materializeRecurringSlots } from "@/lib/booking/recurring";
 
@@ -22,7 +22,7 @@ async function currentTeacher() {
 /** المعلم يضيف وقتاً متاحاً للحجز. */
 export async function addSlot(_prev: BookingState, formData: FormData): Promise<BookingState> {
   const teacherId = await currentTeacher();
-  const start = new Date(formData.get("start_time") as string);
+  const start = parseAcademyLocal(formData.get("start_time") as string);
   const duration = Number(formData.get("duration_minutes") ?? 45) || 45;
   if (isNaN(start.getTime())) return { error: "موعد غير صالح" };
   if (start.getTime() < Date.now()) return { error: "لا يمكن إضافة وقت في الماضي" };
