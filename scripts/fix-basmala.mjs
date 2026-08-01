@@ -13,7 +13,11 @@ const env = Object.fromEntries(
     }),
 );
 
-const sql = postgres(env.DATABASE_URL, { max: 1 });
+// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
+const sql = postgres(env.DATABASE_URL, {
+  max: 1,
+  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
+});
 
 /** يزيل BOM، ويفصل البسملة (أول ٤ كلمات) من الآية ١ لغير الفاتحة. */
 export function cleanAyahText(text, surah, ayah) {
