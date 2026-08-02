@@ -156,11 +156,19 @@ export async function bookSlot(_prev: BookingState, formData: FormData): Promise
   const meetCreatedAt = meetLink ? new Date().toISOString() : null;
 
   let classId = "";
+  let failure: "SLOT_TAKEN" | "QUOTA" | null = null;
   await sql.begin(async (tx) => {
     // إقفال الوقت ذرّياً (يمنع الحجز المزدوج)
     const locked = await tx<{ id: string }[]>`
       update class_slots set status = 'booked' where id = ${slot.id} and status = 'open' returning id`;
     if (locked.length === 0) throw new Error("SLOT_TAKEN");
+
+    // إعادة فحص الرصيد داخل المعاملة: الفحص السابق تمّ قبلها، فحجزان
+    // متزامنان لموعدين مختلفين كانا يتجاوزان سقف الباقة معاً.
+    if (sub) {
+      const fresh = await activeSubscription(tx, student.id);
+      if (fresh?.exhausted) throw new Error("QUOTA");
+    }
 
     const [cls] = await tx<{ id: string }[]>`
       insert into classes (student_id, teacher_id, subscription_id, start_time, end_time, status, meet_link, meet_created_at, google_calendar_event_id)
@@ -170,9 +178,18 @@ export async function bookSlot(_prev: BookingState, formData: FormData): Promise
     classId = cls.id;
     await tx`update class_slots set booked_class_id = ${cls.id} where id = ${slot.id}`;
   }).catch((e) => {
-    if (e instanceof Error && e.message === "SLOT_TAKEN") return;
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "SLOT_TAKEN" || msg === "QUOTA") {
+      failure = msg;
+      return;
+    }
     throw e;
   });
+
+  if (failure === "QUOTA") {
+    if (googleEventId) await deleteMeetEvent(googleEventId);
+    return { error: "نفدت حصص باقتك. جدّد الاشتراك للحجز." };
+  }
 
   if (!classId) {
     // سبقنا طالب آخر بعد إنشاء حدث Meet — يُحذف وإلا بقي اجتماع لحصة لم تُنشأ

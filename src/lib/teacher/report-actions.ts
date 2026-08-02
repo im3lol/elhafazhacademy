@@ -49,7 +49,16 @@ export async function recordLessonReport(
     return { fieldErrors: flatten(parsed.error.issues), error: "تحقق من الحقول" };
   }
   const d = parsed.data;
-  const { teacherId, cls } = await ownedClass(d.class_id);
+
+  // النموذج موصول بـ useActionState: الرمي هنا يعرض صفحة خطأ ويُفقد المعلم
+  // تقريراً كتبه بالكامل. تُعاد الرسالة ليبقى النموذج ومحتواه قائماً.
+  let teacherId: string;
+  let cls: Awaited<ReturnType<typeof ownedClass>>["cls"];
+  try {
+    ({ teacherId, cls } = await ownedClass(d.class_id));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "تعذّر الوصول لهذه الحصة" };
+  }
 
   // حصة أُغلقت سلفاً: إرسال النموذج مرتين كان يخصم حصتين من الباقة
   if (CLOSED_STATUSES.includes(cls.status)) {
@@ -63,12 +72,17 @@ export async function recordLessonReport(
     redirect("/teacher/dashboard");
   }
 
-  // الأخطاء (JSON من الحقل المخفي)
+  // الأخطاء (JSON من الحقل المخفي) — JSON.parse خارج safeParse كان يرمي على
+  // نصّ تالف قبل أن يفحصه المخطط
   let mistakes: ReturnType<typeof mistakesArraySchema.parse> = [];
   const raw = formData.get("mistakes");
   if (typeof raw === "string" && raw.trim()) {
-    const p = mistakesArraySchema.safeParse(JSON.parse(raw));
-    if (p.success) mistakes = p.data;
+    try {
+      const p = mistakesArraySchema.safeParse(JSON.parse(raw));
+      if (p.success) mistakes = p.data;
+    } catch {
+      // نصّ غير صالح — يُسجَّل التقرير بلا أخطاء بدل إسقاطه كاملاً
+    }
   }
 
   const overall = computeOverall(
