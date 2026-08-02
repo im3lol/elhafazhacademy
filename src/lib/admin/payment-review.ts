@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
 import { notifyStudent } from "@/lib/notifications/service";
 import { expireStaleSubscriptions } from "@/lib/finance/subscriptions";
+import { requirePermission } from "@/lib/auth/guards";
 
+// مراجعة المدفوعات: الأدوار المحدودة (دعم/محاسب) لا يجب أن تنفّذ هذه الإجراءات
 async function ensureAdmin() {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "admin") throw new Error("غير مصرّح");
-  return u;
+  return requirePermission("payments.review");
 }
 
 /** موافقة على الدفع → تفعيل الطالب + إنشاء اشتراك + سجل تدقيق. */
@@ -19,9 +18,11 @@ export async function approvePayment(formData: FormData) {
   let studentId = "";
 
   await sql.begin(async (tx) => {
-    const [payment] = await tx<{ student_id: string }[]>`
-      select student_id from payments where id = ${paymentId} limit 1`;
+    // القفل يمنع اعتمادين متزامنين لنفس الدفعة (اشتراكان لدفعة واحدة)
+    const [payment] = await tx<{ student_id: string; status: string }[]>`
+      select student_id, status from payments where id = ${paymentId} limit 1 for update`;
     if (!payment) throw new Error("الدفع غير موجود");
+    if (payment.status === "Payment Approved") return; // اعتُمدت سلفاً — لا تكرّر
     studentId = payment.student_id;
 
     await tx`
@@ -69,9 +70,13 @@ export async function rejectPayment(formData: FormData) {
   let studentId = "";
 
   await sql.begin(async (tx) => {
-    const [payment] = await tx<{ student_id: string }[]>`
-      select student_id from payments where id = ${paymentId} limit 1`;
+    const [payment] = await tx<{ student_id: string; status: string }[]>`
+      select student_id, status from payments where id = ${paymentId} limit 1 for update`;
     if (!payment) throw new Error("الدفع غير موجود");
+    // رفض دفعة معتمَدة يترك الطالب باشتراك نشط ودفعة مرفوضة — حالة متناقضة
+    if (payment.status === "Payment Approved") {
+      throw new Error("هذه الدفعة معتمَدة بالفعل. أوقف اشتراك الطالب بدل رفض الدفعة.");
+    }
     studentId = payment.student_id;
 
     await tx`

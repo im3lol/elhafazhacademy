@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { MISTAKE_TYPES, type MistakeType } from "@/lib/mushaf/data";
 import { arNum } from "@/lib/utils";
+import { requireAdmin } from "@/lib/auth/guards";
 
 
 type Summary = { with_progress: number; open_notes: number; resolved_notes: number; students_with_notes: number };
@@ -10,6 +11,7 @@ type ByType = { mistake_type: MistakeType; n: number };
 type TopStudent = { id: string; full_name: string; open_notes: number; page: number | null };
 
 export default async function AdminMushafPage() {
+  await requireAdmin("students.view");
   const [[sum], byType, top] = await Promise.all([
     sql<Summary[]>`
       select

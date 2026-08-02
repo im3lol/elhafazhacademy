@@ -7,11 +7,13 @@ import { MushafPicker } from "@/components/mushaf/mushaf-picker";
 import { MushafMistakesList } from "@/components/mushaf/mushaf-manager";
 import { type MushafMistake, type MushafProgress } from "@/lib/mushaf/data";
 import { getMushafNav } from "@/lib/mushaf/nav";
+import { isUuid } from "@/lib/utils";
 
 type Student = { id: string; full_name: string };
 
 export default async function TeacherStudentMushafPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 

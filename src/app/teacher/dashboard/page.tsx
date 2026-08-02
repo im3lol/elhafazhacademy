@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireProfile } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { classStatusLabel, classStatusClass, formatClassTime } from "@/lib/class-status";
@@ -19,35 +19,44 @@ const dayLabel = (d: string) => {
 };
 
 export default async function TeacherDashboard() {
-  const user = await getSessionUser();
-  const [teacher] = await sql<TeacherRow[]>`
-    select id, full_name, status, experience_years from teachers where user_id = ${user!.id} limit 1`;
+  const { user, profileId: teacherId } = await requireProfile("teacher");
 
-  const isActive = teacher?.status === "Active";
-
-  const [[counts], classes7] = teacher
-    ? await Promise.all([
+  // القاعدة بعيدة: كل await متسلسل رحلة شبكة كاملة — الخمسة مستقلة فتُنفَّذ معاً
+  const [[teacher], [counts], classes7, atRisk, upcoming] = await Promise.all([
+        sql<TeacherRow[]>`
+          select id, full_name, status, experience_years from teachers where id = ${teacherId} limit 1`,
         sql<Counts[]>`
           select
-            (select count(*) from students where teacher_id = ${teacher.id})::int as students,
-            (select count(*) from students where teacher_id = ${teacher.id} and status = 'Active')::int as active_students,
-            (select count(*) from classes where teacher_id = ${teacher.id}
+            (select count(*) from students where teacher_id = ${teacherId})::int as students,
+            (select count(*) from students where teacher_id = ${teacherId} and status = 'Active')::int as active_students,
+            (select count(*) from classes where teacher_id = ${teacherId}
                and start_time::date = (now() at time zone 'Africa/Cairo')::date and status <> 'cancelled')::int as today,
-            (select count(*) from classes where teacher_id = ${teacher.id}
+            (select count(*) from classes where teacher_id = ${teacherId}
                and start_time >= now() - interval '7 days' and status <> 'cancelled')::int as week,
-            (select count(*) from classes where teacher_id = ${teacher.id} and status = 'completed')::int as completed,
-            (select round(avg(overall_score)) from lesson_reports where teacher_id = ${teacher.id}) as avg_rating,
-            (select coalesce(sum(amount), 0) from teacher_earnings where teacher_id = ${teacher.id} and status = 'pending') as pending`,
+            (select count(*) from classes where teacher_id = ${teacherId} and status = 'completed')::int as completed,
+            (select round(avg(overall_score)) from lesson_reports where teacher_id = ${teacherId}) as avg_rating,
+            (select coalesce(sum(amount), 0) from teacher_earnings where teacher_id = ${teacherId} and status = 'pending') as pending`,
         sql<{ day: string; value: number }[]>`
           select d.day::text as day, count(c.id)::int as value
           from generate_series(
                  (now() at time zone 'Africa/Cairo')::date - 6,
                  (now() at time zone 'Africa/Cairo')::date, interval '1 day') as d(day)
-          left join classes c on c.teacher_id = ${teacher.id}
+          left join classes c on c.teacher_id = ${teacherId}
             and c.start_time::date = d.day and c.status <> 'cancelled'
           group by d.day order by d.day`,
-      ])
-    : [[undefined], []];
+        getAtRiskStudents(user.id),
+        sql<{ id: string; start_time: string; status: string; meet_link: string | null; student_name: string }[]>`
+          select c.id, c.start_time, c.status, c.meet_link, s.full_name as student_name
+          from classes c join students s on s.id = c.student_id
+          where c.teacher_id = ${teacherId}
+            and c.status not in ('completed','cancelled')
+            -- الحصص المنتهية بلا تقرير تبقى ظاهرة أسبوعاً كي يسجّلها المعلم
+            and (c.start_time >= now() - interval '1 hour'
+              or (c.status = 'ended' and c.start_time > now() - interval '7 days'))
+          order by c.start_time asc limit 6`,
+      ]);
+
+  const isActive = teacher?.status === "Active";
 
   const stats = counts
     ? [
@@ -58,20 +67,6 @@ export default async function TeacherDashboard() {
         { label: "متوسط تقييم طلابي", value: counts.avg_rating == null ? "—" : `${arNum(counts.avg_rating)}٪` },
         { label: "مستحقات معلّقة", value: `${arNum(counts.pending)} ج.م`, accent: "gold" as const },
       ]
-    : [];
-
-  const atRisk = teacher ? await getAtRiskStudents(user!.id) : [];
-
-  const upcoming = teacher
-    ? await sql<{ id: string; start_time: string; status: string; meet_link: string | null; student_name: string }[]>`
-        select c.id, c.start_time, c.status, c.meet_link, s.full_name as student_name
-        from classes c join students s on s.id = c.student_id
-        where c.teacher_id = ${teacher.id}
-          and c.status not in ('completed','cancelled')
-          -- الحصص المنتهية بلا تقرير تبقى ظاهرة أسبوعاً كي يسجّلها المعلم
-          and (c.start_time >= now() - interval '1 hour'
-            or (c.status = 'ended' and c.start_time > now() - interval '7 days'))
-        order by c.start_time asc limit 6`
     : [];
 
   return (

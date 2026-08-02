@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireProfile } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requestStudent, cancelStudentRequest } from "@/lib/student-requests/actions";
@@ -14,19 +14,16 @@ type Row = {
 };
 
 export default async function TeacherNewStudentsPage() {
-  const user = await getSessionUser();
-  const [teacher] = await sql<{ id: string }[]>`select id from teachers where user_id = ${user!.id} limit 1`;
+  const { profileId: teacherId } = await requireProfile("teacher");
 
-  const students = teacher
-    ? await sql<Row[]>`
+  const students = await sql<Row[]>`
         select s.id, s.full_name, s.country, s.current_level, p.name as package_name,
                (select r.id from student_teacher_requests r
-                where r.student_id = s.id and r.teacher_id = ${teacher.id} and r.status = 'pending' limit 1) as request_id
+                where r.student_id = s.id and r.teacher_id = ${teacherId} and r.status = 'pending' limit 1) as request_id
         from students s
         left join packages p on p.id = s.package_id
         where s.status = 'Active' and s.teacher_id is null
-        order by s.created_at desc`
-    : [];
+        order by s.created_at desc`;
 
   return (
     <div className="space-y-6">

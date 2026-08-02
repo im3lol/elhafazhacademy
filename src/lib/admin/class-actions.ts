@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
 import { classSchema } from "@/lib/validators/class";
 import { createMeetEvent, deleteMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
 import { formatClassTime, parseAcademyLocal, ACADEMY_TZ } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
 import { activeSubscription } from "@/lib/finance/subscriptions";
+import { requirePermission } from "@/lib/auth/guards";
 
 export type ClassState = {
   error?: string;
@@ -16,10 +16,9 @@ export type ClassState = {
   fieldErrors?: Record<string, string>;
 };
 
+// إدارة الحصص: الأدوار المحدودة (دعم/محاسب) لا يجب أن تنفّذ هذه الإجراءات
 async function ensureAdmin() {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "admin") throw new Error("غير مصرّح");
-  return u;
+  return requirePermission("classes.update");
 }
 
 function flatten(issues: readonly { path: PropertyKey[]; message: string }[]) {

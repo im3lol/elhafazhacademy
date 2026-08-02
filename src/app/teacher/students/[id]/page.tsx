@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { ProgressOverview, type ProgressReport } from "@/components/student/progress-overview";
 import { LessonsTable } from "@/components/student/lessons-table";
+import { isUuid } from "@/lib/utils";
 
 const catLabel: Record<string, string> = {
   memorization: "حفظ",
@@ -51,6 +52,7 @@ type MistakeSummary = { open: string; resolved: string; repeated: string };
 
 export default async function TeacherStudentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 

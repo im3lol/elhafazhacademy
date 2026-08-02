@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/input";
 import { adminReviewRequest } from "@/lib/package-requests/actions";
 import { finalStatusLabel, finalStatusClass, stepStatusLabel } from "@/lib/package-requests/config";
 import { formatClassTime } from "@/lib/class-status";
+import { requireAdmin } from "@/lib/auth/guards";
 
 type Req = {
   id: string;
@@ -21,6 +22,7 @@ type Req = {
 };
 
 export default async function AdminPackageRequestsPage() {
+  await requireAdmin("package_change_requests.approve");
   const requests = await sql<Req[]>`
     select r.id, r.reason, r.teacher_status, r.teacher_note, r.admin_status, r.final_status, r.created_at,
            s.full_name as student_name, t.full_name as teacher_name,

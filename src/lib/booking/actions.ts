@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
-import { createMeetEvent } from "@/lib/google/meet";
+import { createMeetEvent, deleteMeetEvent } from "@/lib/google/meet";
 import { notifyStudent, notifyTeacher } from "@/lib/notifications/service";
 import { formatClassTime, parseAcademyLocal } from "@/lib/class-status";
 import { logAudit } from "@/lib/audit";
@@ -20,6 +20,29 @@ export async function addSlot(_prev: BookingState, formData: FormData): Promise<
   const duration = Number(formData.get("duration_minutes") ?? 45) || 45;
   if (isNaN(start.getTime())) return { error: "موعد غير صالح" };
   if (start.getTime() < Date.now()) return { error: "لا يمكن إضافة وقت في الماضي" };
+  if (duration < 15 || duration > 180) return { error: "المدة يجب أن تكون بين ١٥ و١٨٠ دقيقة" };
+
+  const end = new Date(start.getTime() + duration * 60000);
+  // وقتان متداخلان يُحجزان معاً = حصتان متزامنتان على المعلم نفسه
+  const [clash] = await sql<{ kind: string }[]>`
+    select 'slot' as kind from class_slots
+    where teacher_id = ${teacherId} and status <> 'cancelled'
+      and start_time < ${end.toISOString()}
+      and start_time + make_interval(mins => duration_minutes) > ${start.toISOString()}
+    union all
+    select 'class' as kind from classes
+    where teacher_id = ${teacherId}
+      and status not in ('cancelled','rescheduled')
+      and start_time < ${end.toISOString()}
+      and coalesce(end_time, start_time + interval '45 minutes') > ${start.toISOString()}
+    limit 1`;
+  if (clash) {
+    return {
+      error: clash.kind === "class"
+        ? "لديك حصة مجدولة تتقاطع مع هذا الوقت."
+        : "لديك وقت متاح يتقاطع مع هذا الوقت.",
+    };
+  }
 
   await sql`
     insert into class_slots (teacher_id, start_time, duration_minutes, status)
@@ -52,10 +75,16 @@ export async function addRecurringSlot(_prev: BookingState, formData: FormData):
   if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) return { error: "اختر يوماً صحيحاً" };
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeOfDay)) return { error: "وقت غير صالح" };
 
+  if (duration < 15 || duration > 180) return { error: "المدة يجب أن تكون بين ١٥ و١٨٠ دقيقة" };
+
+  // التقاطع لا التطابق فقط: قالب ١٥:٠٠ (٤٥د) وآخر ١٥:٣٠ يولّدان أوقاتاً متداخلة
   const [existing] = await sql<{ id: string }[]>`
     select id from recurring_slots
-    where teacher_id = ${teacherId} and weekday = ${weekday} and time_of_day = ${timeOfDay} and active limit 1`;
-  if (existing) return { error: "لديك قالب بنفس اليوم والوقت بالفعل." };
+    where teacher_id = ${teacherId} and active and weekday = ${weekday}
+      and time_of_day::time < (${timeOfDay}::time + make_interval(mins => ${duration}))
+      and (time_of_day::time + make_interval(mins => duration_minutes)) > ${timeOfDay}::time
+    limit 1`;
+  if (existing) return { error: "لديك قالب في هذا اليوم يتقاطع مع هذا الوقت." };
 
   await sql`
     insert into recurring_slots (teacher_id, weekday, time_of_day, duration_minutes)
@@ -145,7 +174,11 @@ export async function bookSlot(_prev: BookingState, formData: FormData): Promise
     throw e;
   });
 
-  if (!classId) return { error: "سُبقت إلى هذا الوقت. اختر وقتاً آخر." };
+  if (!classId) {
+    // سبقنا طالب آخر بعد إنشاء حدث Meet — يُحذف وإلا بقي اجتماع لحصة لم تُنشأ
+    if (googleEventId) await deleteMeetEvent(googleEventId);
+    return { error: "سُبقت إلى هذا الوقت. اختر وقتاً آخر." };
+  }
 
   const when = formatClassTime(start.toISOString());
   await Promise.all([

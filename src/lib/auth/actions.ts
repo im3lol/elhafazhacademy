@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { sendEmail } from "@/lib/email/client";
@@ -33,6 +33,11 @@ function isUniqueViolation(e: unknown) {
   return typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "23505";
 }
 
+/** رمز الاسترجاع يُخزَّن مهشّأً — الرمز الخام يبقى في بريد المستخدم وحده. */
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 /** تسجيل طالب جديد. */
 export async function registerStudent(
   _prev: ActionState,
@@ -52,20 +57,21 @@ export async function registerStudent(
         insert into users (email, password_hash, phone, whatsapp, user_type, status)
         values (${d.email}, ${passwordHash}, ${d.phone}, ${d.whatsapp || null}, 'student', 'active')
         returning id, email`;
-      await tx`
+      const [profile] = await tx<{ id: string }[]>`
         insert into students (user_id, full_name, phone, whatsapp, country, city, age, gender,
                               current_level, has_tajweed_experience, package_id, status)
         values (${user.id}, ${d.full_name}, ${d.phone}, ${d.whatsapp || null}, ${d.country},
                 ${d.city || null}, ${d.age ?? null}, ${d.gender}, ${d.current_level},
-                ${!!d.has_tajweed_experience}, ${d.package_id || null}, 'Pending Payment')`;
-      return user;
+                ${!!d.has_tajweed_experience}, ${d.package_id || null}, 'Pending Payment')
+        returning id`;
+      return { ...user, profileId: profile.id };
     });
   } catch (e) {
     if (isUniqueViolation(e)) return { error: "هذا البريد مسجّل بالفعل" };
     return { error: "تعذّر إنشاء الحساب" };
   }
 
-  await createSession({ sub: session.id, type: "student", email: session.email });
+  await createSession({ sub: session.id, type: "student", email: session.email, pid: session.profileId });
   redirect("/student/payment");
 }
 
@@ -88,20 +94,21 @@ export async function registerTeacher(
         insert into users (email, password_hash, phone, whatsapp, user_type, status)
         values (${d.email}, ${passwordHash}, ${d.phone}, ${d.whatsapp || null}, 'teacher', 'active')
         returning id, email`;
-      await tx`
+      const [profile] = await tx<{ id: string }[]>`
         insert into teachers (user_id, full_name, phone, whatsapp, country, city,
                               qualifications, experience_years, ijazat, bio, status)
         values (${user.id}, ${d.full_name}, ${d.phone}, ${d.whatsapp || null}, ${d.country},
                 ${d.city || null}, ${d.qualifications}, ${d.experience_years ?? null},
-                ${d.ijazat || null}, ${d.bio || null}, 'Pending Review')`;
-      return user;
+                ${d.ijazat || null}, ${d.bio || null}, 'Pending Review')
+        returning id`;
+      return { ...user, profileId: profile.id };
     });
   } catch (e) {
     if (isUniqueViolation(e)) return { error: "هذا البريد مسجّل بالفعل" };
     return { error: "تعذّر إنشاء الحساب" };
   }
 
-  await createSession({ sub: session.id, type: "teacher", email: session.email });
+  await createSession({ sub: session.id, type: "teacher", email: session.email, pid: session.profileId });
   redirect("/teacher/pending");
 }
 
@@ -121,8 +128,16 @@ export async function login(
     return { error: `تم تجاوز عدد المحاولات المسموح. حاول بعد ${throttle.minutes.toLocaleString("ar-EG")} دقيقة.` };
   }
 
-  const [user] = await sql<{ id: string; email: string; password_hash: string; user_type: string }[]>`
-    select id, email, password_hash, user_type from users where email = ${email} limit 1`;
+  // معرّف الملف يأتي في نفس الاستعلام (بلا رحلة إضافية) ليُخزَّن في التوكن
+  const [user] = await sql<
+    { id: string; email: string; password_hash: string; user_type: string; profile_id: string | null }[]
+  >`
+    select u.id, u.email, u.password_hash, u.user_type,
+           coalesce(s.id, t.id) as profile_id
+    from users u
+    left join students s on s.user_id = u.id
+    left join teachers t on t.user_id = u.id
+    where u.email = ${email} limit 1`;
 
   if (!user || !(await verifyPassword(parsed.data.password, user.password_hash))) {
     await recordFailure(email);
@@ -134,6 +149,7 @@ export async function login(
     sub: user.id,
     type: user.user_type as "student" | "teacher" | "admin",
     email: user.email,
+    pid: user.profile_id,
   });
   redirect(homeForType(user.user_type));
 }
@@ -149,13 +165,21 @@ export async function forgotPassword(
   }
   const generic = { success: "إن كان البريد مسجلاً، فستصلك رسالة لإعادة تعيين كلمة المرور." };
 
+  // حدّ للطلبات: بدونه يصلح هذا المسار لإغراق أي بريد برسائل باسم الأكاديمية.
+  // مفتاح منفصل عن تقييد الدخول كي لا يقفل أحدهما الآخر.
+  const throttleKey = `reset:${parsed.data.email}`;
+  if ((await checkThrottle(throttleKey)).locked) return generic;
+  await recordFailure(throttleKey);
+
   const [user] = await sql<{ id: string }[]>`select id from users where email = ${parsed.data.email} limit 1`;
   if (!user) return generic; // لا نكشف وجود البريد من عدمه
 
+  // يُخزَّن هاش الرمز لا الرمز: من يقرأ الجدول (نسخة احتياطية، حقن قراءة)
+  // لا يستطيع انتحال روابط إعادة التعيين.
   const token = randomBytes(32).toString("hex");
   await sql`
     insert into password_resets (token, user_id, expires_at)
-    values (${token}, ${user.id}, now() + interval '1 hour')`;
+    values (${hashToken(token)}, ${user.id}, now() + interval '1 hour')`;
 
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const link = `${base}/reset-password?token=${token}`;
@@ -180,14 +204,18 @@ export async function resetPassword(_prev: ActionState, formData: FormData): Pro
   if (next.length < 8) return { fieldErrors: { new_password: "٨ أحرف على الأقل" } };
   if (next !== confirm) return { fieldErrors: { confirm_password: "كلمتا المرور غير متطابقتين" } };
 
+  const hashed = hashToken(token);
   const [row] = await sql<{ user_id: string }[]>`
     select user_id from password_resets
-    where token = ${token} and used = false and expires_at > now() limit 1`;
+    where token = ${hashed} and used = false and expires_at > now() limit 1`;
   if (!row) return { error: "الرابط غير صالح أو منتهي الصلاحية. اطلب رابطاً جديداً." };
 
+  const passwordHash = await hashPassword(next);
   await sql.begin(async (tx) => {
-    await tx`update users set password_hash = ${await hashPassword(next)} where id = ${row.user_id}`;
-    await tx`update password_resets set used = true where token = ${token}`;
+    await tx`update users set password_hash = ${passwordHash} where id = ${row.user_id}`;
+    await tx`update password_resets set used = true where token = ${hashed}`;
+    // إبطال بقية روابط الاسترجاع المعلّقة لنفس المستخدم
+    await tx`update password_resets set used = true where user_id = ${row.user_id} and used = false`;
     await tx`delete from login_throttle where email = (select email from users where id = ${row.user_id})`;
   });
   return { success: "تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن." };

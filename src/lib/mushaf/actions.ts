@@ -7,13 +7,19 @@ import { logAudit } from "@/lib/audit";
 import { notifyStudent } from "@/lib/notifications/service";
 import { isMistakeType } from "@/lib/mushaf/data";
 import { teacherIdOwningStudent, ownerOfMushafMistake } from "@/lib/mushaf/ownership";
+import { isUuid } from "@/lib/utils";
 
 export type MushafState = { error?: string; success?: string };
 
-/** يتحقق أن المستخدم الحالي معلّم يملك هذا الطالب، ويُرجع معرّف المعلم. */
+/**
+ * يتحقق أن المستخدم الحالي معلّم يملك هذا الطالب، ويُرجع معرّف المعلم.
+ * فحص شكل الـ uuid أولاً: تمريره خاماً إلى Postgres يرمي 22P02، ورسالته
+ * الإنجليزية كانت تُعرض للمعلم في الواجهة العربية.
+ */
 async function teacherForStudent(studentId: string): Promise<{ teacherId: string; userId: string }> {
   const u = await getSessionUser();
   if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
+  if (!isUuid(studentId)) throw new Error("هذا الطالب ليس من طلابك");
   const teacherId = await teacherIdOwningStudent(sql, studentId, u.id);
   if (!teacherId) throw new Error("هذا الطالب ليس من طلابك");
   return { teacherId, userId: u.id };
@@ -23,6 +29,7 @@ async function teacherForStudent(studentId: string): Promise<{ teacherId: string
 async function teacherForMistake(mistakeId: string) {
   const u = await getSessionUser();
   if (!u || u.userType !== "teacher") throw new Error("غير مصرّح");
+  if (!isUuid(mistakeId)) throw new Error("غير موجود");
   const owner = await ownerOfMushafMistake(sql, mistakeId, u.id);
   if (!owner) throw new Error("غير موجود");
   return { studentId: owner.studentId, teacherId: owner.teacherId, userId: u.id };

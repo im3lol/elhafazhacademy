@@ -6,6 +6,7 @@ import { LessonReportView, type ReportDetail, type ReportMistake } from "@/compo
 import { formatClassTime } from "@/lib/class-status";
 import { TOTAL_PAGES } from "@/lib/mushaf/data";
 import { getMushafNav } from "@/lib/mushaf/nav";
+import { isUuid } from "@/lib/utils";
 
 type ClassRow = {
   id: string;
@@ -22,6 +23,7 @@ export default async function ReportPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 

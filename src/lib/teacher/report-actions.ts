@@ -86,12 +86,26 @@ export async function recordLessonReport(
           ${d.fluency_score}, ${d.commitment_score}, ${overall}, ${d.teacher_notes || null}, ${d.homework || null})
         returning id`;
 
-      for (const m of mistakes) {
+      // إدراج واحد لكل الأخطاء: المعاملة لا تُجمّع الرحلات عبر المجمّع البعيد،
+      // فعشرة أخطاء كانت عشر رحلات متتابعة داخل قفل المعاملة.
+      if (mistakes.length > 0) {
         await tx`
           insert into student_mistakes (student_id, lesson_report_id, mistake_category, mistake_type,
             surah_name, ayah_number, description, severity, status)
-          values (${cls.student_id}, ${report.id}, ${m.category}, ${m.type},
-            ${m.surah_name || null}, ${m.ayah_number ?? null}, ${m.description || null}, ${m.severity}, 'new')`;
+          select ${cls.student_id}, ${report.id}, v.category, v.type,
+                 v.surah_name, v.ayah_number, v.description, v.severity, 'new'
+          from json_to_recordset(${sql.json(
+            mistakes.map((m) => ({
+              category: m.category,
+              type: m.type,
+              surah_name: m.surah_name || null,
+              ayah_number: m.ayah_number ?? null,
+              description: m.description || null,
+              severity: m.severity,
+            })),
+          )}::json) as v(
+            category text, type text, surah_name text, ayah_number int, description text, severity text
+          )`;
       }
 
       await tx`update classes set status = 'completed' where id = ${cls.id}`;

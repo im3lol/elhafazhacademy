@@ -73,7 +73,7 @@ export function MushafRangePicker({
       return;
     }
     setLoading(true);
-    fetch(`/api/quran/page/${page}`, { cache: "no-store" })
+    fetch(`/api/quran/page/${page}`)
       .then((r) => r.json())
       .then((d: PageData) => {
         if (!active) return;

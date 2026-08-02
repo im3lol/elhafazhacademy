@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { buttonClasses } from "@/components/ui/button";
 import { LiveMushafRoom, type MarkedWord } from "@/components/mushaf/live-mushaf-room";
 import { getMushafNav } from "@/lib/mushaf/nav";
+import { isUuid } from "@/lib/utils";
 
 type ClassRow = {
   student_id: string;
@@ -19,6 +20,7 @@ type ClassRow = {
 
 export default async function LiveClassRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const user = await getSessionUser();
   if (!user) redirect("/login");
 

@@ -1,10 +1,10 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { MistakesTable, type MistakeRow } from "@/components/student/mistakes-table";
 
 export default async function StudentMistakesPage() {
-  const user = await getSessionUser();
+  const user = await requireRole("student");
   const mistakes = await sql<MistakeRow[]>`
     select m.id, s.name_ar as surah_name, m.surah_number, m.ayah_number, m.word_index,
            m.mistake_type, m.title, m.note, m.is_resolved, qa.text as ayah_text
@@ -12,7 +12,7 @@ export default async function StudentMistakesPage() {
     join students st on st.id = m.student_id
     join quran_surahs s on s.number = m.surah_number
     left join quran_ayahs qa on qa.surah_number = m.surah_number and qa.ayah_number = m.ayah_number
-    where st.user_id = ${user!.id}
+    where st.user_id = ${user.id}
     order by m.is_resolved, m.created_at desc`;
 
   return (

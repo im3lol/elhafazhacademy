@@ -1,12 +1,12 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { ClassSchedule, type ScheduleRow } from "@/components/dashboard/class-schedule";
 
 export default async function TeacherSchedulePage() {
-  const user = await getSessionUser();
+  const user = await requireRole("teacher");
   const [teacher] = await sql<{ id: string }[]>`
-    select id from teachers where user_id = ${user!.id} limit 1`;
+    select id from teachers where user_id = ${user.id} limit 1`;
 
   const rows = teacher
     ? await sql<ScheduleRow[]>`

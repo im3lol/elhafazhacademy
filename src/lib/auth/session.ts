@@ -14,6 +14,8 @@ export type SessionUser = {
   id: string;
   email: string;
   userType: UserType;
+  /** معرّف ملف الطالب/المعلم من التوكن — null للأدمن أو لجلسة قديمة. */
+  profileId: string | null;
 };
 
 /** يقرأ المستخدم الحالي من كوكي الجلسة (JWT) — لا اتصال بالشبكة. */
@@ -23,7 +25,12 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!token) return null;
   const payload = await verifySession(token);
   if (!payload) return null;
-  return { id: payload.sub, email: payload.email, userType: payload.type };
+  return {
+    id: payload.sub,
+    email: payload.email,
+    userType: payload.type,
+    profileId: payload.pid ?? null,
+  };
 }
 
 /** ينشئ جلسة ويضبط الكوكي. */

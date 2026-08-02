@@ -94,6 +94,17 @@ export async function adminReviewRequest(formData: FormData) {
         where id = ${id}`;
       if (req.requested_package_id) {
         await tx`update students set package_id = ${req.requested_package_id} where id = ${req.student_id}`;
+        // الاشتراك النشط يحمل سقف الباقة القديمة: بلا تحديثه يبقى الطالب على
+        // حصص باقته السابقة رغم اعتماد التغيير، ولا شيء يُنشئ اشتراكاً بديلاً
+        // ما دام هناك اشتراك نشط.
+        await tx`
+          update student_subscriptions s
+          set package_id = ${req.requested_package_id},
+              classes_total = coalesce(p.classes_per_month, 0),
+              hours_total = coalesce(p.hours_per_month, 0)
+          from packages p
+          where p.id = ${req.requested_package_id}
+            and s.student_id = ${req.student_id} and s.status = 'active'`;
       }
     } else {
       await tx`

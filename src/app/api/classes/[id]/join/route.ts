@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
+import { isUuid } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ type Row = { meet_link: string | null; s_user: string; t_user: string };
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const user = await getSessionUser();
   if (!user) return NextResponse.redirect(new URL("/login", req.url));
 

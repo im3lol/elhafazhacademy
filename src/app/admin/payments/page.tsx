@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { approvePayment, rejectPayment } from "@/lib/admin/payment-review";
+import { requireAdmin } from "@/lib/auth/guards";
 
 const statusBadge: Record<string, { label: string; cls: string }> = {
   "Payment Under Review": { label: "قيد المراجعة", cls: "bg-warning/15 text-warning" },
@@ -24,6 +25,7 @@ type Row = {
 };
 
 export default async function AdminPaymentsPage() {
+  await requireAdmin("payments.review");
   const rows = await sql<Row[]>`
     select pay.id, pay.amount, pay.currency, pay.status, pay.created_at,
            pay.transaction_reference, pay.proof_image_url,

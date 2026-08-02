@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
 import { packageSchema } from "@/lib/validators/package";
+import { requirePermission } from "@/lib/auth/guards";
 
 export type PackageState = {
   error?: string;
@@ -11,10 +11,9 @@ export type PackageState = {
   fieldErrors?: Record<string, string>;
 };
 
+// إدارة الباقات: الأدوار المحدودة (دعم/محاسب) لا يجب أن تنفّذ هذه الإجراءات
 async function ensureAdmin() {
-  const u = await getSessionUser();
-  if (!u || u.userType !== "admin") throw new Error("غير مصرّح");
-  return u;
+  return requirePermission("packages.update");
 }
 
 function flatten(issues: readonly { path: PropertyKey[]; message: string }[]) {

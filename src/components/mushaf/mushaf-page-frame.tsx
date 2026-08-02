@@ -24,6 +24,7 @@ export function MushafPageFrame({
   juz,
   page,
   loading,
+  error,
   nameOf,
   marked,
 }: {
@@ -32,6 +33,7 @@ export function MushafPageFrame({
   juz: number | null;
   page: number;
   loading?: boolean;
+  error?: string | null;
   nameOf: (surah: number) => string;
   marked?: Map<string, MistakeType>;
 }) {
@@ -62,6 +64,10 @@ export function MushafPageFrame({
             </div>
             {loading ? (
               <p className="py-12 text-center text-muted">جارٍ التحميل…</p>
+            ) : error ? (
+              <p className="py-12 text-center text-sm text-danger">{error}</p>
+            ) : words.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">لا توجد بيانات لهذه الصفحة.</p>
             ) : (
               <div className="space-y-1.5" style={{ fontFamily: QURAN_FONT }} dir="rtl">
                 {lineNos.map((ln) => {

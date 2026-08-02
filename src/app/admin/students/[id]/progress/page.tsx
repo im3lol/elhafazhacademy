@@ -4,9 +4,11 @@ import { sql } from "@/lib/db";
 import { buttonClasses } from "@/components/ui/button";
 import { getStudentProgress } from "@/lib/student/progress";
 import { StudentProgressView } from "@/components/student/student-progress-view";
+import { isUuid } from "@/lib/utils";
 
 export default async function AdminStudentProgressPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
 
   const [student] = await sql<{ id: string; full_name: string; memorized_parts: string | null; current_level: string | null }[]>`
     select id, full_name, memorized_parts, current_level from students where id = ${id} limit 1`;

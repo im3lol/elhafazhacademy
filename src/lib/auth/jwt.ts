@@ -18,13 +18,19 @@ export type SessionPayload = {
   sub: string; // user id
   type: "student" | "teacher" | "admin";
   email: string;
+  /**
+   * معرّف ملف الطالب/المعلم (students.id أو teachers.id) — يوفّر رحلة قاعدة
+   * بيانات على كل صفحة مسجَّلة. آمن للتخزين في التوكن: الجلسة موقّعة، والمعرّف
+   * ثابت مدى حياة الحساب. الجلسات القديمة بلا هذا الحقل تعود للبحث في القاعدة.
+   */
+  pid?: string | null;
 };
 
 const ALG = "HS256";
 const MAX_AGE = 60 * 60 * 24 * 7; // أسبوع
 
 export async function signSession(payload: SessionPayload) {
-  return new SignJWT({ type: payload.type, email: payload.email })
+  return new SignJWT({ type: payload.type, email: payload.email, pid: payload.pid ?? null })
     .setProtectedHeader({ alg: ALG })
     .setSubject(payload.sub)
     .setIssuedAt()
@@ -40,6 +46,7 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
       sub: payload.sub,
       type: payload.type as SessionPayload["type"],
       email: (payload.email as string) ?? "",
+      pid: (payload.pid as string | null) ?? null,
     };
   } catch {
     return null;

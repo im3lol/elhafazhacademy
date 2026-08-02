@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { approveStudentRequest, rejectStudentRequest } from "@/lib/student-requests/actions";
 import { formatClassTime } from "@/lib/class-status";
+import { requireAdmin } from "@/lib/auth/guards";
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
   pending: { label: "قيد المراجعة", cls: "bg-warning/15 text-warning" },
@@ -22,6 +23,7 @@ type Row = {
 };
 
 export default async function AdminStudentRequestsPage() {
+  const { can } = await requireAdmin("students.view");
   const requests = await sql<Row[]>`
     select r.id, r.status, r.created_at,
            t.full_name as teacher_name, s.full_name as student_name, s.current_level as student_level,
@@ -64,14 +66,18 @@ export default async function AdminStudentRequestsPage() {
                   {r.student_has_teacher && (
                     <span className="text-xs text-warning">تنبيه: الطالب لديه معلم بالفعل.</span>
                   )}
-                  <form action={approveStudentRequest} className="ms-auto">
-                    <input type="hidden" name="request_id" value={r.id} />
-                    <Button type="submit" size="sm">موافقة وتعيين</Button>
-                  </form>
-                  <form action={rejectStudentRequest}>
-                    <input type="hidden" name="request_id" value={r.id} />
-                    <Button type="submit" size="sm" variant="danger">رفض</Button>
-                  </form>
+                  {can("students.update") && (
+                    <>
+                      <form action={approveStudentRequest} className="ms-auto">
+                        <input type="hidden" name="request_id" value={r.id} />
+                        <Button type="submit" size="sm">موافقة وتعيين</Button>
+                      </form>
+                      <form action={rejectStudentRequest}>
+                        <input type="hidden" name="request_id" value={r.id} />
+                        <Button type="submit" size="sm" variant="danger">رفض</Button>
+                      </form>
+                    </>
+                  )}
                 </div>
               )}
             </Card>

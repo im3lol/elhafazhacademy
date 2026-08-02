@@ -34,7 +34,7 @@ export function AdminStudentMushaf({
 }) {
   const [page, setPage] = useState(initialPage);
   const [jump, setJump] = useState("");
-  const { data, loading } = usePageData(page);
+  const { data, loading, error } = usePageData(page);
 
   const nameOf = (surah: number) => surahNav.find((s) => s.number === surah)?.name_ar ?? `سورة ${surah}`;
   const marked = useMemo(
@@ -96,6 +96,7 @@ export function AdminStudentMushaf({
         juz={data.juz}
         page={page}
         loading={loading}
+        error={error}
         nameOf={nameOf}
         marked={marked}
       />

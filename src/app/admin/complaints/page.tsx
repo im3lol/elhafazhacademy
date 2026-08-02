@@ -1,8 +1,10 @@
 import { getSessionUser } from "@/lib/auth/session";
 import { listComplaints } from "@/lib/complaints/queries";
 import { ComplaintsList } from "@/components/complaints/complaints-list";
+import { requireAdmin } from "@/lib/auth/guards";
 
 export default async function AdminComplaintsPage() {
+  await requireAdmin("complaints.manage");
   const user = await getSessionUser();
   const complaints = await listComplaints(user!);
   return (

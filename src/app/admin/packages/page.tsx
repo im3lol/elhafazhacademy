@@ -1,7 +1,9 @@
 import { sql } from "@/lib/db";
 import { PackageManager, type Pkg } from "@/components/admin/package-manager";
+import { requireAdmin } from "@/lib/auth/guards";
 
 export default async function AdminPackagesPage() {
+  const { can } = await requireAdmin("packages.view");
   const packages = await sql<Pkg[]>`
     select id, name, description, classes_per_month, hours_per_month,
            price, currency, duration_days, type, is_active
@@ -13,7 +15,7 @@ export default async function AdminPackagesPage() {
         <h1 className="font-display text-3xl font-black">إدارة الباقات</h1>
         <p className="mt-1 text-muted">أنشئ وعدّل الباقات التي تظهر للطلاب.</p>
       </div>
-      <PackageManager packages={packages} />
+      {can("packages.update") && <PackageManager packages={packages} />}
     </div>
   );
 }

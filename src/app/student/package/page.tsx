@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PackageRequestForm } from "@/components/student/package-request-form";
@@ -21,13 +21,13 @@ type Req = {
 };
 
 export default async function StudentPackagePage() {
-  const user = await getSessionUser();
+  const user = await requireRole("student");
 
   const [[current], packages, requests] = await Promise.all([
     sql<Current[]>`
       select p.name as package_name, p.classes_per_month, p.price, p.currency
       from students s left join packages p on p.id = s.package_id
-      where s.user_id = ${user!.id} limit 1`,
+      where s.user_id = ${user.id} limit 1`,
     sql<Pkg[]>`select id, name, price, currency from packages where is_active = true order by price`,
     sql<Req[]>`
       select r.id, r.reason, r.teacher_status, r.admin_status, r.final_status, r.created_at,
@@ -36,7 +36,7 @@ export default async function StudentPackagePage() {
       join students s on s.id = r.student_id
       left join packages rp on rp.id = r.requested_package_id
       left join packages cp on cp.id = r.current_package_id
-      where s.user_id = ${user!.id}
+      where s.user_id = ${user.id}
       order by r.created_at desc`,
   ]);
 

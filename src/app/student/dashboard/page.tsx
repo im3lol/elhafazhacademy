@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireProfile } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { classStatusLabel, classStatusClass, formatClassTime } from "@/lib/class-status";
@@ -26,43 +26,39 @@ type Row = {
 };
 
 export default async function StudentDashboard() {
-  const user = await getSessionUser();
-  const [student] = await sql<Row[]>`
-    select s.id, s.full_name, s.status, s.current_level, s.country, s.memorized_parts, p.name as package_name
-    from students s
-    left join packages p on p.id = s.package_id
-    where s.user_id = ${user!.id} limit 1`;
+  const { profileId: studentId } = await requireProfile("student");
 
-  const [reports, [mistakeSummary]] = student
-    ? await Promise.all([
-        sql<ProgressReport[]>`
-          select created_at, overall_score, memorization_score, tajweed_score, fluency_score, commitment_score
-          from lesson_reports where student_id = ${student.id} order by created_at asc`,
-        sql<{ open: number; resolved: number }[]>`
-          select count(*) filter (where not is_resolved)::int as open,
-                 count(*) filter (where is_resolved)::int as resolved
-          from student_mushaf_mistakes where student_id = ${student.id}`,
-      ])
-    : [[], [{ open: 0, resolved: 0 }]];
-
-  const upcoming = student
-    ? await sql<{ id: string; start_time: string; status: string; meet_link: string | null; teacher_name: string }[]>`
-        select c.id, c.start_time, c.status, c.meet_link, t.full_name as teacher_name
-        from classes c join teachers t on t.id = c.teacher_id
-        where c.student_id = ${student.id}
-          and c.status not in ('completed','cancelled')
-          and c.start_time >= now() - interval '1 hour'
-        order by c.start_time asc limit 5`
-    : [];
-
-  const [mushaf] = student
-    ? await sql<{ page_number: number | null; surah_number: number | null; ayah_number: number | null; open_notes: number }[]>`
-        select
-          (select page_number from student_mushaf_progress where student_id = ${student.id}) as page_number,
-          (select surah_number from student_mushaf_progress where student_id = ${student.id}) as surah_number,
-          (select ayah_number from student_mushaf_progress where student_id = ${student.id}) as ayah_number,
-          (select count(*)::int from student_mushaf_mistakes where student_id = ${student.id} and not is_resolved) as open_notes`
-    : [{ page_number: null, surah_number: null, ayah_number: null, open_notes: 0 }];
+  // خمس رحلات متسلسلة كانت تُجمَع هنا؛ لا تعتمد على بعضها فتُنفَّذ معاً
+  const [[student], reports, [mistakeSummary], upcoming, [mushaf]] = await Promise.all([
+    sql<Row[]>`
+      select s.id, s.full_name, s.status, s.current_level, s.country, s.memorized_parts, p.name as package_name
+      from students s
+      left join packages p on p.id = s.package_id
+      where s.id = ${studentId} limit 1`,
+    // آخر ٢٤ تقريراً فقط: الرسم البياني لا يعرض أكثر، والجلب غير المحدود ينمو بلا سقف
+    sql<ProgressReport[]>`
+      select * from (
+        select created_at, overall_score, memorization_score, tajweed_score, fluency_score, commitment_score
+        from lesson_reports where student_id = ${studentId} order by created_at desc limit 24
+      ) r order by created_at asc`,
+    sql<{ open: number; resolved: number }[]>`
+      select count(*) filter (where not is_resolved)::int as open,
+             count(*) filter (where is_resolved)::int as resolved
+      from student_mushaf_mistakes where student_id = ${studentId}`,
+    sql<{ id: string; start_time: string; status: string; meet_link: string | null; teacher_name: string }[]>`
+      select c.id, c.start_time, c.status, c.meet_link, t.full_name as teacher_name
+      from classes c join teachers t on t.id = c.teacher_id
+      where c.student_id = ${studentId}
+        and c.status not in ('completed','cancelled')
+        and c.start_time >= now() - interval '1 hour'
+      order by c.start_time asc limit 5`,
+    sql<{ page_number: number | null; surah_number: number | null; ayah_number: number | null; open_notes: number }[]>`
+      select p.page_number, p.surah_number, p.ayah_number,
+             (select count(*)::int from student_mushaf_mistakes
+               where student_id = ${studentId} and not is_resolved) as open_notes
+      from (select 1) one
+      left join student_mushaf_progress p on p.student_id = ${studentId}`,
+  ]);
 
   const status = student?.status ?? "Pending Payment";
 

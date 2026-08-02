@@ -6,6 +6,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { ProgressOverview, type ProgressReport } from "@/components/student/progress-overview";
 import { LessonsTable } from "@/components/student/lessons-table";
 import { formatClassTime } from "@/lib/class-status";
+import { isUuid } from "@/lib/utils";
 
 const studentStatus: Record<string, { label: string; cls: string }> = {
   "Pending Payment": { label: "بانتظار الدفع", cls: "bg-warning/15 text-warning" },
@@ -70,6 +71,7 @@ type PaymentSum = { approved: string };
 
 export default async function AdminStudentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
 
   const [student] = await sql<Student[]>`
     select s.id, s.full_name, s.country, s.city, s.phone, s.whatsapp,

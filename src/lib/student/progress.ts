@@ -54,18 +54,22 @@ export async function reconcileAchievements(
     select achievement_key, earned_at from student_achievements where student_id = ${studentId}`;
   const earnedAt = new Map(existing.map((r) => [r.achievement_key, r.earned_at]));
 
-  for (const k of earnedKeys) {
-    if (earnedAt.has(k)) continue;
-    const [row] = await sql<{ earned_at: string }[]>`
-      insert into student_achievements (student_id, achievement_key) values (${studentId}, ${k})
-      on conflict (student_id, achievement_key) do nothing
-      returning earned_at`;
-    if (row) {
-      earnedAt.set(k, row.earned_at);
-      if (notify) {
-        const a = ACHIEVEMENTS.find((x) => x.key === k)!;
-        await notifyStudent(studentId, "إنجاز جديد 🎉", `${a.icon} ${a.title}`);
-      }
+  // هذه الدالة تُستدعى من مسار قراءة (صفحة التقدّم)، وكانت تُصدر رحلة إدراج
+  // لكل إنجاز جديد. إدراج واحد لكل الجدد يكفي.
+  const fresh = earnedKeys.filter((k) => !earnedAt.has(k));
+  if (fresh.length === 0) return earnedAt;
+
+  const inserted = await sql<{ achievement_key: string; earned_at: string }[]>`
+    insert into student_achievements (student_id, achievement_key)
+    select ${studentId}, k from unnest(${fresh}::text[]) as k
+    on conflict (student_id, achievement_key) do nothing
+    returning achievement_key, earned_at`;
+
+  for (const row of inserted) {
+    earnedAt.set(row.achievement_key, row.earned_at);
+    if (notify) {
+      const a = ACHIEVEMENTS.find((x) => x.key === row.achievement_key);
+      if (a) await notifyStudent(studentId, "إنجاز جديد 🎉", `${a.icon} ${a.title}`);
     }
   }
   return earnedAt;

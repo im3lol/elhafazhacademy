@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireProfile } from "@/lib/auth/guards";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AddSlotForm } from "@/components/booking/add-slot-form";
@@ -14,21 +14,18 @@ const statusLabel: Record<string, string> = { open: "متاح", booked: "محج�
 const weekdayLabel = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 export default async function TeacherAvailabilityPage() {
-  const user = await getSessionUser();
-  const [teacher] = await sql<{ id: string }[]>`select id from teachers where user_id = ${user!.id} limit 1`;
+  const { profileId: teacherId } = await requireProfile("teacher");
 
-  const [slots, recurring] = teacher
-    ? await Promise.all([
+  const [slots, recurring] = await Promise.all([
         sql<Slot[]>`
           select id, start_time, duration_minutes, status from class_slots
-          where teacher_id = ${teacher.id} and status <> 'cancelled'
+          where teacher_id = ${teacherId} and status <> 'cancelled'
             and start_time > now() - interval '1 day'
           order by start_time asc`,
         sql<Recurring[]>`
           select id, weekday, time_of_day, duration_minutes from recurring_slots
-          where teacher_id = ${teacher.id} and active order by weekday, time_of_day`,
-      ])
-    : [[], []];
+          where teacher_id = ${teacherId} and active order by weekday, time_of_day`,
+      ]);
 
   return (
     <div className="space-y-6">

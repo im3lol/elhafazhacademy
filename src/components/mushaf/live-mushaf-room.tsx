@@ -103,7 +103,7 @@ export function LiveMushafRoom({
       return;
     }
     setLoading(true);
-    fetch(`/api/quran/page/${page}`, { cache: "no-store" })
+    fetch(`/api/quran/page/${page}`)
       .then((r) => r.json())
       .then((d: PageData) => {
         if (!active) return;
@@ -155,10 +155,19 @@ export function LiveMushafRoom({
         .catch(() => {});
     };
     poll();
-    const t = setInterval(poll, 3000);
+    // ٤ ثوانٍ تكفي لمتابعة صفحة المعلم، وتخفّض حمل الاستطلاع على القاعدة الثلث.
+    // الاستطلاع يتوقف تماماً إن كان التبويب مخفياً (لا فائدة من مزامنة صفحة لا تُرى).
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") poll();
+    }, 4000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       active = false;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [isPresenter, classId]);
 

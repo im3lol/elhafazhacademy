@@ -1,16 +1,16 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { BookingList } from "@/components/booking/booking-list";
 
 type Slot = { id: string; start_time: string; duration_minutes: number };
 
 export default async function StudentBookingPage() {
-  const user = await getSessionUser();
+  const user = await requireRole("student");
   const [student] = await sql<{ id: string; teacher_id: string | null; status: string; teacher_name: string | null }[]>`
     select s.id, s.teacher_id, s.status, t.full_name as teacher_name
     from students s left join teachers t on t.id = s.teacher_id
-    where s.user_id = ${user!.id} limit 1`;
+    where s.user_id = ${user.id} limit 1`;
 
   const slots =
     student?.teacher_id && student.status === "Active"

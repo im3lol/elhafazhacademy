@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { ensureEarningForClass } from "@/lib/finance/earnings";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/auth/guards";
+import { isUuid } from "@/lib/utils";
 
 const FINANCE = "finance.view";
 
@@ -35,19 +36,21 @@ export async function payoutTeacher(formData: FormData) {
   const admin = await requirePermission(FINANCE);
   const teacherId = formData.get("teacher_id") as string;
 
+  if (!isUuid(teacherId)) return;
+
   await sql.begin(async (tx) => {
-    const [sum] = await tx<{ total: string | null }[]>`
-      select sum(amount) as total from teacher_earnings
-      where teacher_id = ${teacherId} and status = 'approved'`;
-    const total = Number(sum?.total ?? 0);
+    // القفل ثم الصرف في خطوة واحدة: القراءة غير المقفلة كانت تسمح لضغطتين
+    // متزامنتين بإنشاء صرفين كاملين لنفس المستحقات.
+    const paid = await tx<{ amount: string }[]>`
+      update teacher_earnings set status = 'paid', paid_at = now()
+      where teacher_id = ${teacherId} and status = 'approved'
+      returning amount`;
+    const total = paid.reduce((s, r) => s + Number(r.amount), 0);
     if (total <= 0) return;
 
     await tx`
       insert into teacher_payouts (teacher_id, amount, currency, status, payment_method)
       values (${teacherId}, ${total}, 'EGP', 'paid', 'manual')`;
-    await tx`
-      update teacher_earnings set status = 'paid', paid_at = now()
-      where teacher_id = ${teacherId} and status = 'approved'`;
     await tx`
       insert into audit_logs (actor_user_id, action, entity_type, entity_id, new_value)
       values (${admin.id}, 'teacher.payout', 'teacher', ${teacherId}, ${sql.json({ amount: total })})`;

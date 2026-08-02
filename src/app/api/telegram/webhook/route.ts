@@ -9,12 +9,11 @@ export async function POST(req: Request) {
   const cfg = await getTelegramConfig();
   if (!cfg?.bot_token) return NextResponse.json({ ok: true });
 
-  // التحقق من السر (Telegram يرسله في الترويسة)
-  if (cfg.webhook_secret) {
-    const secret = req.headers.get("x-telegram-bot-api-secret-token");
-    if (secret !== cfg.webhook_secret) {
-      return NextResponse.json({ ok: false }, { status: 401 });
-    }
+  // السر إلزامي: بدونه يقبل هذا المسار تحديثات مزوّرة من أي جهة
+  // (محاولات ربط حسابات، وإغراق المستخدمين بردود البوت).
+  const secret = req.headers.get("x-telegram-bot-api-secret-token");
+  if (!cfg.webhook_secret || secret !== cfg.webhook_secret) {
+    return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   const update = await req.json().catch(() => null);

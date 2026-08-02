@@ -5,9 +5,11 @@ import { getSessionUser } from "@/lib/auth/session";
 import { buttonClasses } from "@/components/ui/button";
 import { getStudentProgress } from "@/lib/student/progress";
 import { StudentProgressView } from "@/components/student/student-progress-view";
+import { isUuid } from "@/lib/utils";
 
 export default async function TeacherStudentProgressPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 

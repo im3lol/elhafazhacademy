@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { isValidMushafPage } from "@/lib/mushaf/data";
+import { isUuid } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -48,22 +49,34 @@ async function participantRole(classId: string) {
 /** الطالب/الأدمن يستطلعون موضع العرض الحالي. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { role, row } = await participantRole(id);
   if (!row) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!role) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  // نبضة حضور: سجّل آخر ظهور للطرف الحالي داخل الغرفة
-  if (role === "teacher") await sql`update classes set live_teacher_seen_at = now() where id = ${id}`;
-  else if (role === "student") await sql`update classes set live_student_seen_at = now() where id = ${id}`;
+  // هذا المسار يُستطلَع كل بضع ثوانٍ من الطرفين معاً؛ كان أربع رحلات متسلسلة
+  // إلى قاعدة بعيدة. الآن: نبضة الحضور + قراءة الحضور في جملة واحدة،
+  // والأخطاء بالتوازي معها.
+  const seenColumn =
+    role === "teacher" ? sql`live_teacher_seen_at = now()` : role === "student" ? sql`live_student_seen_at = now()` : null;
 
-  // الحضور محسوب على الخادم (تفادي انحراف ساعة العميل): متصل إن ظهر خلال ٨ ثوانٍ
-  const [presence] = await sql<{ t_online: boolean; s_online: boolean }[]>`
-    select (live_teacher_seen_at > now() - interval '8 seconds') as t_online,
-           (live_student_seen_at > now() - interval '8 seconds') as s_online
-    from classes where id = ${id}`;
-  const mistakes = await sql<MarkedWord[]>`
-    select surah_number, ayah_number, word_index, mistake_type
-    from student_mushaf_mistakes where student_id = ${row.student_id} and not is_resolved`;
+  const [presenceRows, mistakes] = await Promise.all([
+    seenColumn
+      ? sql<{ t_online: boolean; s_online: boolean }[]>`
+          update classes set ${seenColumn} where id = ${id}
+          returning (live_teacher_seen_at > now() - interval '8 seconds') as t_online,
+                    (live_student_seen_at > now() - interval '8 seconds') as s_online`
+      : sql<{ t_online: boolean; s_online: boolean }[]>`
+          select (live_teacher_seen_at > now() - interval '8 seconds') as t_online,
+                 (live_student_seen_at > now() - interval '8 seconds') as s_online
+          from classes where id = ${id}`,
+    sql<MarkedWord[]>`
+      select surah_number, ayah_number, word_index, mistake_type
+      from student_mushaf_mistakes where student_id = ${row.student_id} and not is_resolved
+      limit 500`,
+  ]);
+  const presence = presenceRows[0];
+
   return NextResponse.json({
     status: row.status,
     page: row.live_page,
@@ -77,6 +90,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 /** المعلم فقط يبثّ الصفحة المعروضة حالياً. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { user, role, row } = await participantRole(id);
   if (!row) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (role !== "teacher") return NextResponse.json({ error: "forbidden" }, { status: 403 });

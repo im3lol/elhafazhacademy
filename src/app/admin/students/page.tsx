@@ -2,6 +2,7 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Pagination, parsePage } from "@/components/ui/pagination";
+import { requireAdmin } from "@/lib/auth/guards";
 
 const PAGE_SIZE = 20;
 
@@ -27,6 +28,7 @@ export default async function AdminStudentsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requireAdmin("students.view");
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
   const [students, [{ total }]] = await Promise.all([

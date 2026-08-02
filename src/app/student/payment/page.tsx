@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { getSetting, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
 import { Card } from "@/components/ui/card";
 import { FormMessage } from "@/components/ui/field";
@@ -14,17 +14,17 @@ type StudentRow = {
 type PaymentRow = { status: string; rejection_reason: string | null };
 
 export default async function StudentPaymentPage() {
-  const user = await getSessionUser();
+  const user = await requireRole("student");
 
   const [student] = await sql<StudentRow[]>`
     select s.status, p.name as package_name, p.price as package_price, p.currency as package_currency
     from students s left join packages p on p.id = s.package_id
-    where s.user_id = ${user!.id} limit 1`;
+    where s.user_id = ${user.id} limit 1`;
 
   const [lastPayment] = await sql<PaymentRow[]>`
     select pay.status, pay.rejection_reason
     from payments pay join students s on s.id = pay.student_id
-    where s.user_id = ${user!.id}
+    where s.user_id = ${user.id}
     order by pay.created_at desc limit 1`;
 
   const pay = await getSetting<AcademyPayment>(ACADEMY_PAYMENT_KEY);

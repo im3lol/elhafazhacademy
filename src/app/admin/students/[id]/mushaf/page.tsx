@@ -6,11 +6,12 @@ import { buttonClasses } from "@/components/ui/button";
 import { AdminStudentMushaf } from "@/components/mushaf/admin-student-mushaf";
 import { getMushafNav } from "@/lib/mushaf/nav";
 import { type MushafMistake } from "@/lib/mushaf/data";
-import { arNum } from "@/lib/utils";
+import { arNum, isUuid } from "@/lib/utils";
 
 
 export default async function AdminStudentMushafPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
 
   const [student] = await sql<{ id: string; full_name: string }[]>`
     select id, full_name from students where id = ${id} limit 1`;

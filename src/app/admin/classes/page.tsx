@@ -5,6 +5,7 @@ import { ClassScheduler } from "@/components/admin/class-scheduler";
 import { cancelClass, rescheduleClass } from "@/lib/admin/class-actions";
 import { classStatusLabel, classStatusClass, formatClassTime } from "@/lib/class-status";
 import { Pagination, parsePage } from "@/components/ui/pagination";
+import { requireAdmin } from "@/lib/auth/guards";
 
 const PAGE_SIZE = 30;
 
@@ -32,6 +33,7 @@ export default async function AdminClassesPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  const { can } = await requireAdmin("classes.view");
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
   const [students, teachers, classes, [{ total }], live] = await Promise.all([
@@ -113,7 +115,7 @@ export default async function AdminClassesPage({
         </section>
       )}
 
-      <ClassScheduler students={students} teachers={teachers} />
+      {can("classes.update") && <ClassScheduler students={students} teachers={teachers} />}
 
       {students.length === 0 && (
         <Card className="text-sm text-muted">
@@ -156,7 +158,7 @@ export default async function AdminClassesPage({
                     )}
                   </td>
                   <td className="p-4">
-                    {active && (
+                    {active && can("classes.update") && (
                       <div className="flex flex-col items-start gap-2 lg:flex-row lg:items-center">
                         <form action={rescheduleClass} className="flex items-center gap-1">
                           <input type="hidden" name="id" value={c.id} />

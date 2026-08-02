@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { approveTeacher, rejectTeacher, setTeacherRate } from "@/lib/admin/teacher-review";
 import { Pagination, parsePage } from "@/components/ui/pagination";
+import { requireAdmin } from "@/lib/auth/guards";
 
 const PAGE_SIZE = 20;
 
@@ -33,6 +34,7 @@ export default async function AdminTeachersPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  const { can } = await requireAdmin("teachers.view");
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
   const [teachers, [{ total }]] = await Promise.all([
@@ -87,7 +89,7 @@ export default async function AdminTeachersPage({
                       </span>
                     </td>
                     <td className="p-3">
-                      {pending && (
+                      {pending && can("teachers.approve") && (
                         <div className="flex flex-wrap items-end gap-2">
                           <form action={approveTeacher} className="flex items-end gap-1.5">
                             <input type="hidden" name="teacher_id" value={t.id} />
@@ -100,7 +102,7 @@ export default async function AdminTeachersPage({
                           </form>
                         </div>
                       )}
-                      {active && (
+                      {active && can("teachers.approve") && (
                         <form action={setTeacherRate} className="flex items-end gap-1.5">
                           <input type="hidden" name="teacher_id" value={t.id} />
                           <Input
