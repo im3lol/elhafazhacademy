@@ -1,4 +1,4 @@
-import { sql } from "@/lib/db";
+import { getActivePackages } from "@/lib/packages";
 import { StudentRegisterForm } from "@/components/auth/student-register-form";
 
 type Pkg = { id: string; name: string; price: number; currency: string };
@@ -9,8 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function StudentRegisterPage() {
   let packages: Pkg[] = [];
   try {
-    packages = await sql<Pkg[]>`
-      select id, name, price, currency from packages where is_active = true order by price`;
+    packages = await getActivePackages();
   } catch {
     packages = [];
   }

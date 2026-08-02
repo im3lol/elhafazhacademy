@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { google } from "googleapis";
 import { getSessionUser } from "@/lib/auth/session";
 import { oauthClient, GOOGLE_SETTING_KEY, GOOGLE_STATE_COOKIE } from "@/lib/google/client";
 import { setSetting } from "@/lib/settings";
@@ -35,6 +34,7 @@ export async function GET(request: NextRequest) {
     // جلب بريد الحساب المربوط
     let email: string | null = null;
     try {
+      const { google } = await import("googleapis");
       const oauth2 = google.oauth2({ version: "v2", auth: client });
       const info = await oauth2.userinfo.get();
       email = info.data.email ?? null;

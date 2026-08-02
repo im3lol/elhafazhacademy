@@ -9,35 +9,51 @@ export type Inbox = {
   read: boolean;
 };
 
-/** ينشئ إشعاراً داخل التطبيق لمستخدم. */
+/**
+ * ينشئ إشعاراً داخل التطبيق لمستخدم.
+ * الإشعارات تُرسل بعد إتمام المعاملة (دفعة اعتُمدت، حصة حُجزت)، فإخفاق
+ * الإشعار يجب ألّا يُفشل إجراءً نجح فعلاً ويدفع الأدمن لإعادة المحاولة.
+ * لذلك لا يرمي أبداً: يسجّل الخطأ ويمضي.
+ */
 export async function notify(
   userId: string,
   title: string,
   message: string,
   templateKey: string | null = null,
 ): Promise<void> {
-  await sql`
-    insert into notifications (user_id, channel, template_key, title, message, status, sent_at)
-    values (${userId}, 'app', ${templateKey}, ${title}, ${message}, 'sent', now())`;
-
-  // قناة تيليجرام (best-effort) إن كان المستخدم مربوطاً والتكامل مفعّلاً
-  const [u] = await sql<{ chat: string | null }[]>`
-    select telegram_chat_id as chat from users where id = ${userId} limit 1`;
-  if (u?.chat) {
-    await sendTelegram(u.chat, `${title}\n\n${message}`);
+  try {
+    // الإدراج وجلب معرّف تيليجرام في رحلة واحدة
+    const [u] = await sql<{ chat: string | null }[]>`
+      with ins as (
+        insert into notifications (user_id, channel, template_key, title, message, status, sent_at)
+        values (${userId}, 'app', ${templateKey}, ${title}, ${message}, 'sent', now())
+        returning user_id
+      )
+      select u.telegram_chat_id as chat from ins join users u on u.id = ins.user_id`;
+    if (u?.chat) await sendTelegram(u.chat, `${title}\n\n${message}`);
+  } catch (e) {
+    console.error("[notify] تعذّر إرسال الإشعار:", e);
   }
 }
 
 /** إشعار لطالب عبر معرّف الطالب (يحل user_id تلقائياً). */
 export async function notifyStudent(studentId: string, title: string, message: string): Promise<void> {
-  const [r] = await sql<{ user_id: string }[]>`select user_id from students where id = ${studentId} limit 1`;
-  if (r) await notify(r.user_id, title, message);
+  try {
+    const [r] = await sql<{ user_id: string }[]>`select user_id from students where id = ${studentId} limit 1`;
+    if (r) await notify(r.user_id, title, message);
+  } catch (e) {
+    console.error("[notify] تعذّر جلب مستخدم الطالب:", e);
+  }
 }
 
 /** إشعار لمعلم عبر معرّف المعلم (يحل user_id تلقائياً). */
 export async function notifyTeacher(teacherId: string, title: string, message: string): Promise<void> {
-  const [r] = await sql<{ user_id: string }[]>`select user_id from teachers where id = ${teacherId} limit 1`;
-  if (r) await notify(r.user_id, title, message);
+  try {
+    const [r] = await sql<{ user_id: string }[]>`select user_id from teachers where id = ${teacherId} limit 1`;
+    if (r) await notify(r.user_id, title, message);
+  } catch (e) {
+    console.error("[notify] تعذّر جلب مستخدم المعلم:", e);
+  }
 }
 
 /** صندوق الإشعارات + عدد غير المقروء. */

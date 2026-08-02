@@ -40,11 +40,21 @@ export async function runClassTick(): Promise<TickResult> {
       and c.start_time <= now() + interval '15 minutes'
       and c.start_time >= now() - interval '60 minutes'`;
 
-  for (const c of due) {
-    const body = `حصتك على وشك البدء. انضم عبر الرابط: ${c.meet_link}`;
-    await notify(c.s_user, "تذكير: حصتك قريباً 🔔", body);
-    await notify(c.t_user, "تذكير: حصتك قريباً 🔔", body);
-    await sql`update classes set status = 'meet_sent', meet_sent_at = now() where id = ${c.class_id}`;
+  if (due.length > 0) {
+    // التعليم أولاً ثم الإرسال: العكس كان يعيد التذكير في كل دورة إن تعثّر
+    // الإرسال، ويرسل الطرفين بالتتابع فتُبطئ كل حصة الدورة كلها.
+    await sql`
+      update classes set status = 'meet_sent', meet_sent_at = now()
+      where id = any(${due.map((c) => c.class_id)})`;
+    await Promise.all(
+      due.flatMap((c) => {
+        const body = `حصتك على وشك البدء. انضم عبر الرابط: ${c.meet_link}`;
+        return [
+          notify(c.s_user, "تذكير: حصتك قريباً 🔔", body),
+          notify(c.t_user, "تذكير: حصتك قريباً 🔔", body),
+        ];
+      }),
+    );
   }
 
   // ٢) تحويل الحصص التي بدأت إلى "جارية"

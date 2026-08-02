@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { isGoogleConnected, googleCredsConfigured, GOOGLE_CREDS_KEY } from "@/lib/google/client";
-import { getTelegramConfig } from "@/lib/telegram/client";
-import { getEmailConfig } from "@/lib/email/client";
+import { GOOGLE_CREDS_KEY, GOOGLE_SETTING_KEY } from "@/lib/google/client";
+import { TELEGRAM_SETTING_KEY } from "@/lib/telegram/client";
+import { EMAIL_SETTING_KEY } from "@/lib/email/client";
 import { disconnectGoogle, saveGoogleCreds, clearGoogleCreds, saveAcademyPayment, saveTelegramConfig, disconnectTelegram, saveEmailConfig } from "@/lib/admin/settings-actions";
-import { getSetting, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
+import { getSettings, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
 import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { FormMessage, Field } from "@/components/ui/field";
@@ -27,13 +27,25 @@ export default async function AdminSettingsPage({
   await requirePermissionPage("settings.manage");
 
   const { google, saved } = await searchParams;
-  const { connected, email } = await isGoogleConnected();
   const msg = google ? messages[google] : null;
-  const hasCreds = await googleCredsConfigured();
-  const gc = await getSetting<{ client_id?: string; client_secret?: string; redirect_uri?: string }>(GOOGLE_CREDS_KEY);
-  const pay = await getSetting<AcademyPayment>(ACADEMY_PAYMENT_KEY);
-  const tg = await getTelegramConfig();
-  const em = await getEmailConfig();
+
+  // كل الإعدادات من نفس الجدول: رحلة واحدة بدل ست
+  const s = await getSettings([
+    GOOGLE_SETTING_KEY,
+    GOOGLE_CREDS_KEY,
+    ACADEMY_PAYMENT_KEY,
+    TELEGRAM_SETTING_KEY,
+    EMAIL_SETTING_KEY,
+  ]);
+  const tokens = s[GOOGLE_SETTING_KEY] as { refresh_token?: string; email?: string } | undefined;
+  const gc = s[GOOGLE_CREDS_KEY] as { client_id?: string; client_secret?: string; redirect_uri?: string } | undefined;
+  const pay = s[ACADEMY_PAYMENT_KEY] as AcademyPayment | undefined;
+  const tg = s[TELEGRAM_SETTING_KEY] as { bot_token?: string; bot_username?: string; webhook_secret?: string } | undefined;
+  const em = s[EMAIL_SETTING_KEY] as { api_key?: string; from?: string } | undefined;
+
+  const connected = !!tokens?.refresh_token;
+  const email = tokens?.email ?? null;
+  const hasCreds = !!(gc?.client_id || process.env.GOOGLE_CLIENT_ID) && !!(gc?.client_secret || process.env.GOOGLE_CLIENT_SECRET);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const defaultRedirect = `${appUrl}/api/google/callback`;
 

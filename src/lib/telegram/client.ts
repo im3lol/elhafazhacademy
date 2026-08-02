@@ -13,7 +13,11 @@ export async function getTelegramConfig(): Promise<TelegramConfig | null> {
   return getSetting<TelegramConfig>(TELEGRAM_SETTING_KEY);
 }
 
-/** إرسال رسالة عبر بوت تيليجرام — best-effort، لا يرمي استثناء. */
+/**
+ * إرسال رسالة عبر بوت تيليجرام — best-effort، لا يرمي استثناء.
+ * بمهلة صريحة: اتصال معلّق بلا مهلة كان يوقف دورة الـ cron كلها
+ * فلا تُنفَّذ بقية خطواتها (الغياب، توليد المواعيد، إنهاء الاشتراكات).
+ */
 export async function sendTelegram(chatId: string, text: string): Promise<boolean> {
   const c = await getTelegramConfig();
   if (!c?.bot_token || !chatId) return false;
@@ -22,6 +26,7 @@ export async function sendTelegram(chatId: string, text: string): Promise<boolea
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text }),
+      signal: AbortSignal.timeout(8000),
     });
     return res.ok;
   } catch {

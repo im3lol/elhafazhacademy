@@ -15,6 +15,16 @@ export async function getSetting<T = unknown>(key: string): Promise<T | null> {
   return row?.value ?? null;
 }
 
+/**
+ * يقرأ عدة إعدادات في رحلة واحدة.
+ * صفحة الإعدادات كانت تقرأ نفس الجدول ست مرات متتالية — ست رحلات لقاعدة بعيدة.
+ */
+export async function getSettings(keys: string[]): Promise<Record<string, unknown>> {
+  const rows = await sql<{ key: string; value: unknown }[]>`
+    select key, value from app_settings where key = any(${keys})`;
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
 /** يحفظ/يحدّث قيمة إعداد. */
 export async function setSetting(key: string, value: unknown): Promise<void> {
   await sql`

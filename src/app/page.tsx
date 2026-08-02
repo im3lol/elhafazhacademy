@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { sql } from "@/lib/db";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
+import { getActivePackages } from "@/lib/packages";
 import {
   IconUsers,
   IconChart,
@@ -98,9 +98,7 @@ export default async function Home() {
   // الصفحة العامة لا يجب أن تنهار لو تعذّرت القاعدة لحظياً — تظهر بلا باقات بدلاً من خطأ ٥٠٠.
   let pkgs: PkgRow[] = [];
   try {
-    pkgs = await sql<PkgRow[]>`
-      select id, name, classes_per_month, price, currency
-      from packages where is_active = true order by price`;
+    pkgs = await getActivePackages();
   } catch {
     pkgs = [];
   }

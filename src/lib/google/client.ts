@@ -1,4 +1,3 @@
-import { google } from "googleapis";
 import { getSetting, setSetting } from "@/lib/settings";
 
 export const GOOGLE_SETTING_KEY = "google_oauth"; // التوكن المخزّن بعد الربط
@@ -40,6 +39,7 @@ export async function oauthClient() {
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET غير مضبوطة");
   }
+  const { google } = await import("googleapis");
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
@@ -77,14 +77,16 @@ export async function authedClient() {
   if (!tokens?.refresh_token) return null;
   const client = await oauthClient();
   client.setCredentials({ refresh_token: tokens.refresh_token });
-  // تحديث access token تلقائياً وحفظه
-  client.on("tokens", async (t) => {
-    await setSetting(GOOGLE_SETTING_KEY, {
+  // تحديث access token تلقائياً وحفظه.
+  // المستمع منفصل عن سلسلة الاستدعاء: رميُه لا يلتقطه try/catch المتصل،
+  // فيصبح unhandled rejection يُسقط العملية عند أي عثرة في القاعدة.
+  client.on("tokens", (t) => {
+    void setSetting(GOOGLE_SETTING_KEY, {
       ...tokens,
       access_token: t.access_token ?? tokens.access_token,
       expiry_date: t.expiry_date ?? tokens.expiry_date,
       refresh_token: t.refresh_token ?? tokens.refresh_token,
-    });
+    }).catch((e) => console.error("[google] تعذّر حفظ التوكن المحدَّث:", e));
   });
   return client;
 }

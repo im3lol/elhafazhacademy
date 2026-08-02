@@ -29,8 +29,14 @@ async function handle(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const result = await runClassTick();
-  return NextResponse.json({ ok: true, ...result });
+  try {
+    const result = await runClassTick();
+    return NextResponse.json({ ok: true, ...result });
+  } catch (e) {
+    // المجدول الخارجي يحتاج حالة واضحة: بلا التقاط تظهر صفحة خطأ HTML
+    console.error("[cron] فشلت الدورة:", e);
+    return NextResponse.json({ ok: false, error: "tick failed" }, { status: 500 });
+  }
 }
 
 export const GET = handle;

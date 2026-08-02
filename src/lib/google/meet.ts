@@ -1,4 +1,3 @@
-import { google } from "googleapis";
 import { authedClient } from "@/lib/google/client";
 
 export type MeetEventResult = { eventId: string; meetLink: string } | null;
@@ -18,6 +17,7 @@ export async function createMeetEvent(input: {
   const auth = await authedClient();
   if (!auth) return null;
 
+  const { google } = await import("googleapis");
   const calendar = google.calendar({ version: "v3", auth });
   const requestId = `elhafazah-${input.startISO}-${Math.round(input.endISO.length)}`;
 
@@ -59,6 +59,7 @@ export async function deleteMeetEvent(eventId: string): Promise<boolean> {
   try {
     const auth = await authedClient();
     if (!auth) return false;
+    const { google } = await import("googleapis");
     await google.calendar({ version: "v3", auth }).events.delete({
       calendarId: "primary",
       eventId,

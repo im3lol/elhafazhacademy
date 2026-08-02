@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { packageSchema } from "@/lib/validators/package";
 import { requirePermission } from "@/lib/auth/guards";
+import { invalidatePackagesCache } from "@/lib/packages";
 
 export type PackageState = {
   error?: string;
@@ -35,6 +36,7 @@ export async function createPackage(_prev: PackageState, formData: FormData): Pr
     insert into packages (name, description, classes_per_month, hours_per_month, price, currency, duration_days, type, is_active)
     values (${d.name}, ${d.description || null}, ${d.classes_per_month ?? null}, ${d.hours_per_month ?? null},
             ${d.price}, ${d.currency}, ${d.duration_days}, ${d.type || null}, ${d.is_active})`;
+  invalidatePackagesCache();
   revalidatePath("/admin/packages");
   revalidatePath("/");
   revalidatePath("/register/student");
@@ -55,6 +57,7 @@ export async function updatePackage(_prev: PackageState, formData: FormData): Pr
       price = ${d.price}, currency = ${d.currency}, duration_days = ${d.duration_days},
       type = ${d.type || null}, is_active = ${d.is_active}
     where id = ${id}`;
+  invalidatePackagesCache();
   revalidatePath("/admin/packages");
   revalidatePath("/");
   revalidatePath("/register/student");
@@ -66,6 +69,7 @@ export async function togglePackage(formData: FormData) {
   await ensureAdmin();
   const id = formData.get("id") as string;
   await sql`update packages set is_active = not is_active where id = ${id}`;
+  invalidatePackagesCache();
   revalidatePath("/admin/packages");
   revalidatePath("/");
   revalidatePath("/register/student");
@@ -86,6 +90,7 @@ export async function deletePackage(formData: FormData) {
   } else {
     await sql`delete from packages where id = ${id}`;
   }
+  invalidatePackagesCache();
   revalidatePath("/admin/packages");
   revalidatePath("/");
   revalidatePath("/register/student");
