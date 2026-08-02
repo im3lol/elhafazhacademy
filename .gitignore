@@ -50,3 +50,5 @@ backups/
 
 # أدوات محلية / حالة المحرّر
 .claude/
+
+.vercel

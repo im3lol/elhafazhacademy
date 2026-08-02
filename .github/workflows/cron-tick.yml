@@ -1,0 +1,26 @@
+name: المهمة الدورية للحصص
+
+# خطة Vercel المجانية تسمح بمهمة يومية واحدة فقط، وهي لا تكفي لتذكيرات
+# الحصص (تُرسل قبل الموعد بـ ١٥ دقيقة). هذا الجدول يستدعي نفس المسار كل
+# ٥ دقائق. ملاحظة: جدولة GitHub قد تتأخر بضع دقائق تحت الحمل — عند
+# الترقية إلى Vercel Pro استبدلها بـ crons في vercel.json.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: استدعاء /api/cron/tick
+        run: |
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL || 'https://elhafazah-academy.vercel.app' }}/api/cron/tick")
+          cat /tmp/out.json
+          echo ""
+          if [ "$code" != "200" ]; then
+            echo "فشلت الدورة برمز $code"
+            exit 1
+          fi

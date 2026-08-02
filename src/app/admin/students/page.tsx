@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Pagination, parsePage } from "@/components/ui/pagination";
 import { requireAdmin } from "@/lib/auth/guards";
+import { CreatePersonForm } from "@/components/admin/create-person-form";
 
 const PAGE_SIZE = 20;
 
@@ -28,14 +29,18 @@ export default async function AdminStudentsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requireAdmin("students.view");
+  const { can } = await requireAdmin("students.view");
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
-  const [students, [{ total }]] = await Promise.all([
+  const [students, [{ total }], teachers, packages] = await Promise.all([
     sql<Row[]>`
       select id, full_name, country, current_level, status
       from students order by created_at desc limit ${PAGE_SIZE} offset ${offset}`,
     sql<{ total: number }[]>`select count(*)::int as total from students`,
+    sql<{ id: string; label: string }[]>`
+      select id, full_name as label from teachers where status = 'Active' order by full_name limit 200`,
+    sql<{ id: string; label: string }[]>`
+      select id, name as label from packages where is_active order by price limit 50`,
   ]);
 
   return (
@@ -44,6 +49,10 @@ export default async function AdminStudentsPage({
         <h1 className="font-display text-3xl font-black">الطلاب</h1>
         <p className="mt-1 text-muted">{Number(total).toLocaleString("ar-EG")} طالب مسجّل.</p>
       </div>
+
+      {can("students.create") && (
+        <CreatePersonForm kind="student" teachers={teachers} packages={packages} />
+      )}
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-right text-sm">

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { approveTeacher, rejectTeacher, setTeacherRate } from "@/lib/admin/teacher-review";
 import { Pagination, parsePage } from "@/components/ui/pagination";
 import { requireAdmin } from "@/lib/auth/guards";
+import { CreatePersonForm } from "@/components/admin/create-person-form";
 
 const PAGE_SIZE = 20;
 
@@ -50,6 +51,8 @@ export default async function AdminTeachersPage({
         <h1 className="font-display text-3xl font-black">المعلمون</h1>
         <p className="mt-1 text-muted">{Number(total).toLocaleString("ar-EG")} معلم مسجّل.</p>
       </div>
+
+      {can("teachers.approve") && <CreatePersonForm kind="teacher" />}
 
       {teachers.length === 0 ? (
         <Card className="text-sm text-muted">لا يوجد معلمون بعد.</Card>
