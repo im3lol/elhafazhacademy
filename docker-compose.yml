@@ -27,7 +27,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/elhafazah
+      # الافتراضي قاعدة Docker المحلية؛ اضبط DATABASE_URL في ملف .env
+      # (غير مُتتبَّع في git) للإشارة إلى قاعدة الإنتاج على Supabase.
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/elhafazah}
       AUTH_SECRET: ${AUTH_SECRET:-elhafazah-local-docker-secret-please-change-32}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:8080}
       NODE_ENV: production
@@ -46,7 +48,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/elhafazah
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/elhafazah}
     command: sh -c "node scripts/seed-quran.mjs && node scripts/seed-quran-layout.mjs && node scripts/seed-admin.mjs && node scripts/seed-demo.mjs"
 
 volumes:
