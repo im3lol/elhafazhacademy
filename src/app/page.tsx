@@ -4,6 +4,7 @@ import { Logo, LogoMark } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { getActivePackages } from "@/lib/packages";
 import {
+  IconUsers,
   IconChart,
   IconCalendar,
   IconVideo,
@@ -28,13 +29,12 @@ const navLinks = [
   { href: "#footer", label: "تواصل معنا" },
 ];
 
-// حقائق عن المنصة نفسها — قابلة للإثبات بفتح أي صفحة.
-// (سبقتها أرقام استخدام مُفترَضة أُزيلت: المنصة جديدة وليس لها سجل استخدام بعد.)
+// بيانات عرض (ديمو) — تُستبدل بأرقام الجهة المشترية عند التسليم.
 const stats = [
-  { value: "٦٠٤", label: "صفحة مصحف بالخط العثماني", icon: IconCap },
-  { value: "٥", label: "أنواع ملاحظات على الكلمة", icon: IconClipboard },
-  { value: "٤", label: "محاور تقييم لكل حصة", icon: IconChart },
-  { value: "٣٠", label: "جزءاً في خريطة التقدّم", icon: IconStar },
+  { value: "+١٠٬٠٠٠", label: "طالب وطالبة", icon: IconUsers },
+  { value: "+٥٠", label: "معلم متخصص", icon: IconCap },
+  { value: "+١٠٠٬٠٠٠", label: "حصة تعليمية", icon: IconVideo },
+  { value: "٩٥٪", label: "معدل رضا الطلاب", icon: IconStar },
 ];
 
 const whyUs = [
@@ -65,20 +65,11 @@ const features = [
 const parentItems = ["مستوى التقدم", "الحضور والغياب", "تقييمات المعلم", "التقارير الشهرية", "ملاحظات التحسين"];
 const teacherCriteria = ["الإتقان والتجويد", "الخبرة التعليمية", "مهارات التواصل", "الالتزام والمتابعة"];
 
-// ما تتضمنه المنصة فعلاً — بديل قسم الشهادات (لا يجوز نسب كلام لأشخاص لم يقولوه).
-const included = [
-  {
-    title: "المصحف المباشر",
-    desc: "المعلم يتصفّح فتتبعه صفحة الطالب، ويُعلّم الخطأ على الكلمة نفسها فيراه الطالب خلال ثوانٍ.",
-  },
-  {
-    title: "تقرير لكل حصة",
-    desc: "أربعة محاور موزونة، وتحديد المقطع من المصحف، وأخطاء وملاحظات وواجب للحصة القادمة.",
-  },
-  {
-    title: "متابعة وتقدّم",
-    desc: "خريطة الأجزاء الثلاثين، ورسوم بيانية للتقييمات، وأوسمة تُمنح تلقائياً عند بلوغ كل مرحلة.",
-  },
+// بيانات عرض (ديمو) — تُستبدل بشهادات الجهة المشترية عند التسليم.
+const testimonials = [
+  { quote: "منصة منظمة وسهلة، ساعدتني على الالتزام بالحفظ.", name: "طالب" },
+  { quote: "التقارير والمتابعة كانت سبباً رئيسياً في تطوري.", name: "ولي أمر" },
+  { quote: "أفضل تجربة تعليمية مررت بها في حفظ القرآن.", name: "طالبة" },
 ];
 
 const faqs = [
@@ -166,10 +157,14 @@ export default async function Home() {
                 احجز جلسة تقييم مجانية
               </Link>
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-              <IconStar className="h-4 w-4 text-gold" />
-              <span className="font-bold">مصحف تفاعلي بالخط العثماني</span>
-              <span className="text-muted">تلاوة بمحاذاة الكلمة · متابعة على الكلمة · تقارير لكل حصة</span>
+            <div className="mt-8 flex items-center gap-3 text-sm">
+              <div className="flex text-gold">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <IconStar key={i} className="h-4 w-4" />
+                ))}
+              </div>
+              <span className="font-bold">٤٫٩/٥</span>
+              <span className="text-muted">من آلاف الطلاب</span>
             </div>
           </div>
 
@@ -247,8 +242,9 @@ export default async function Home() {
         {/* ===== Packages ===== */}
         <section className="bg-surface/60" id="packages">
           <Section title="اختر الباقة المناسبة لك" subtitle="باقات مرنة تناسب كل مستوى وهدف">
+            {/* ثلاث باقات فقط على الصفحة الرئيسية — البقية خلف رابط «عرض جميع الباقات» */}
             <div className="grid gap-5 sm:grid-cols-3">
-              {pkgs.map((p, i) => {
+              {pkgs.slice(0, 3).map((p, i) => {
                 const featured = i === 1;
                 return (
                   <div
@@ -297,13 +293,14 @@ export default async function Home() {
           </Section>
         </section>
 
-        {/* ===== ما تتضمنه المنصة ===== */}
-        <Section title="ماذا تتضمن المنصة؟" subtitle="ثلاث ركائز تعمل معاً في كل حصة">
+        {/* ===== Testimonials ===== */}
+        <Section title="ماذا يقول طلابنا؟" subtitle="تجارب من مجتمع الحفظة">
           <div className="grid gap-5 sm:grid-cols-3">
-            {included.map((c) => (
-              <div key={c.title} className="rounded-2xl border border-border bg-surface p-7">
-                <h3 className="font-display text-lg font-bold text-brand">{c.title}</h3>
-                <p className="mt-3 leading-relaxed text-muted">{c.desc}</p>
+            {testimonials.map((t, i) => (
+              <div key={i} className="rounded-2xl border border-border bg-surface p-7">
+                <div className="font-display text-4xl leading-none text-gold">”</div>
+                <p className="mt-2 leading-relaxed">{t.quote}</p>
+                <p className="mt-4 text-sm font-medium text-muted">— {t.name}</p>
               </div>
             ))}
           </div>
@@ -331,8 +328,8 @@ export default async function Home() {
           <div className="mx-auto w-full max-w-4xl px-6 py-16 text-center">
             <h2 className="font-display text-3xl font-black sm:text-4xl">ابدأ رحلتك مع القرآن اليوم</h2>
             <p className="mx-auto mt-4 max-w-2xl leading-relaxed opacity-90">
-              سجّل حسابك وابدأ الحفظ والمراجعة مع معلمك ضمن بيئة تعليمية منظمة،
-              ومتابعة دقيقة لكل حصة.
+              انضم إلى آلاف الطلاب الذين بدؤوا رحلتهم في حفظ القرآن الكريم ضمن بيئة
+              تعليمية منظمة واحترافية.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
@@ -378,7 +375,7 @@ export default async function Home() {
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto w-full max-w-6xl px-6 py-5 text-center text-sm opacity-60">
-            جميع الحقوق محفوظة © ٢٠٢٦ أكاديمية الحفظة — صُمّم بخط ثمانية
+            جميع الحقوق محفوظة © ٢٠٢٦ أكاديمية الحفظة
           </div>
         </div>
       </footer>
