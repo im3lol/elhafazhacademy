@@ -177,11 +177,18 @@ for (const s of students) {
       values (${s.id}, ${s.pkg.id}, current_date - 20,
               current_date + make_interval(days => ${s.pkg.duration_days ?? 30}) - interval '20 days', 'active',
               ${s.pkg.classes_per_month ?? 8}, ${s.lessons})`;
-    await sql`
-      insert into payments (student_id, amount, currency, payment_method, transaction_reference,
-                            status, reviewed_by, reviewed_at, created_at)
-      values (${s.id}, ${s.pkg.price}, 'EGP', 'manual_transfer', ${"TRX-" + Math.abs(hashCode(s.email))},
-              'Payment Approved', ${admin?.id ?? null}, now() - interval '20 days', now() - interval '21 days')`;
+    // دفعة لكل شهر من الأشهر الستة الماضية — يملأ رسم «الإيرادات — آخر ٦ أشهر»،
+    // وأحدثها داخل الشهر الحالي كي لا يظهر «إيرادات الشهر» صفراً.
+    for (let m = 5; m >= 0; m--) {
+      await sql`
+        insert into payments (student_id, amount, currency, payment_method, transaction_reference,
+                              status, reviewed_by, reviewed_at, created_at)
+        values (${s.id}, ${s.pkg.price}, 'EGP', 'manual_transfer',
+                ${"TRX-" + Math.abs(hashCode(s.email + m))},
+                'Payment Approved', ${admin?.id ?? null},
+                date_trunc('month', now()) - make_interval(months => ${m}) + interval '3 days',
+                date_trunc('month', now()) - make_interval(months => ${m}) + interval '2 days')`;
+    }
   } else {
     await sql`
       insert into payments (student_id, amount, currency, payment_method, transaction_reference, status, created_at)
@@ -271,8 +278,14 @@ for (const s of students) {
       on conflict (class_id) do nothing`;
   }
 
-  // حصص قادمة (تُظهر «الحصص القادمة» ولوحة الحصص)
+  // حصص قادمة: واحدة اليوم (تُفعّل مؤشر «حصص اليوم») واثنتان لاحقاً
   if (s.status === "Active") {
+    await sql`
+      insert into classes (student_id, teacher_id, subscription_id, start_time, end_time, status, meet_link)
+      values (${s.id}, ${s.teacherId}, ${sub?.id ?? null},
+              date_trunc('day', now() at time zone 'Africa/Cairo') at time zone 'Africa/Cairo' + interval '19 hours',
+              date_trunc('day', now() at time zone 'Africa/Cairo') at time zone 'Africa/Cairo' + interval '19 hours 45 minutes',
+              'meet_created', 'https://meet.google.com/demo-link')`;
     for (const [n, plus] of [[1, 2], [2, 5]]) {
       await sql`
         insert into classes (student_id, teacher_id, subscription_id, start_time, end_time, status, meet_link)
@@ -326,6 +339,13 @@ for (const s of students) {
 // ---------- الطالب المتعثّر: غياب متكرر ----------
 const struggling = students.find((s) => s.struggling);
 if (struggling) {
+  // غياب داخل الشهر الحالي أيضاً كي يظهر مؤشر «غياب هذا الشهر» في لوحة الإدارة
+  await sql`
+    insert into classes (student_id, teacher_id, start_time, end_time, status, created_at)
+    values (${struggling.id}, ${struggling.teacherId},
+            greatest(date_trunc('month', now()) + interval '1 day', now() - interval '2 days'),
+            greatest(date_trunc('month', now()) + interval '1 day', now() - interval '2 days') + interval '45 minutes',
+            'no_show_student', now() - interval '2 days')`;
   for (const d of [8, 15]) {
     await sql`
       insert into classes (student_id, teacher_id, start_time, end_time, status, created_at)
