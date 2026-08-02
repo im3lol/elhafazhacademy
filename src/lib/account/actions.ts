@@ -21,12 +21,16 @@ export async function updateProfile(_prev: AccountState, formData: FormData): Pr
   const whatsapp = ((formData.get("whatsapp") as string) || "").trim() || null;
   if (fullName.length < 2) return { fieldErrors: { full_name: "الاسم مطلوب" } };
 
-  if (u.userType === "student") {
-    await sql`update students set full_name = ${fullName}, phone = ${phone}, whatsapp = ${whatsapp} where user_id = ${u.id}`;
-  } else if (u.userType === "teacher") {
-    await sql`update teachers set full_name = ${fullName}, phone = ${phone}, whatsapp = ${whatsapp} where user_id = ${u.id}`;
-  }
-  await sql`update users set phone = ${phone}, whatsapp = ${whatsapp} where id = ${u.id}`;
+  // معاملة واحدة: تحديثان منفصلان كانا يتركان الهاتف مختلفاً بين الجدولين
+  // إن أخفق الثاني.
+  await sql.begin(async (tx) => {
+    if (u.userType === "student") {
+      await tx`update students set full_name = ${fullName}, phone = ${phone}, whatsapp = ${whatsapp} where user_id = ${u.id}`;
+    } else if (u.userType === "teacher") {
+      await tx`update teachers set full_name = ${fullName}, phone = ${phone}, whatsapp = ${whatsapp} where user_id = ${u.id}`;
+    }
+    await tx`update users set phone = ${phone}, whatsapp = ${whatsapp} where id = ${u.id}`;
+  });
 
   revalidatePath(`/${u.userType}/settings`);
   return { success: "تم حفظ بياناتك." };

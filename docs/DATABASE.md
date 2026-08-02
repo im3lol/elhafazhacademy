@@ -50,6 +50,7 @@ Supabase يفتح واجهة REST على schema `public` لأي شخص يملك 
 | `02_seed.sql` | الأدوار، الصلاحيات، الباقات الافتراضية، قوالب الإشعارات |
 | `03_app_settings.sql` | إعدادات التطبيق الأساسية |
 | `04_constraints.sql` | قيود وفهارس أُضيفت بعد الإصدار الأول |
+| `05_indexes.sql` | فهارس أداء + قيد الاشتراك النشط الواحد |
 
 > أعدت التهيئة من الصفر: `docker compose down -v && docker compose up -d`.
 
@@ -57,6 +58,7 @@ Supabase يفتح واجهة REST على schema `public` لأي شخص يملك 
 
 ```bash
 docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/04_constraints.sql
+docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/05_indexes.sql
 ```
 
 ## الجداول (٣٤)

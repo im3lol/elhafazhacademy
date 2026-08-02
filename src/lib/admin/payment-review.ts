@@ -43,11 +43,14 @@ export async function approvePayment(formData: FormData) {
       if (!existing) {
         const [pkg] = await tx<{ classes_per_month: number | null; hours_per_month: number | null; duration_days: number | null }[]>`
           select classes_per_month, hours_per_month, duration_days from packages where id = ${student.package_id} limit 1`;
+        // on conflict: القيد الفريد يحرس اعتمادين متزامنين لدفعتين مختلفتين
+        // لنفس الطالب — كلٌّ لا يرى اشتراك الآخر قبل الالتزام.
         await tx`
           insert into student_subscriptions (student_id, package_id, start_date, end_date, status, classes_total, hours_total)
           values (${student.id}, ${student.package_id}, current_date,
                   current_date + ${(pkg?.duration_days ?? 30)} * interval '1 day', 'active',
-                  ${pkg?.classes_per_month ?? 0}, ${pkg?.hours_per_month ?? 0})`;
+                  ${pkg?.classes_per_month ?? 0}, ${pkg?.hours_per_month ?? 0})
+          on conflict (student_id) where status = 'active' do nothing`;
       }
     }
 

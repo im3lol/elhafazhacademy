@@ -27,7 +27,8 @@ export default async function StudentMushafPage() {
       from student_mushaf_progress where student_id = ${student.id} limit 1`,
     sql<MushafMistake[]>`
       select id, surah_number, ayah_number, word_index, mistake_type, title, note, is_resolved, created_at
-      from student_mushaf_mistakes where student_id = ${student.id} order by created_at desc`,
+      from student_mushaf_mistakes where student_id = ${student.id}
+      order by created_at desc limit 500`,
     sql<Bookmark[]>`
       select page_number, label from student_mushaf_bookmarks
       where student_id = ${student.id} order by page_number`,

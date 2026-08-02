@@ -33,7 +33,7 @@ export default async function StudentLessonsPage() {
       from lesson_reports r
       join students s on s.id = r.student_id
       where s.user_id = ${user.id}
-      order by r.created_at desc`,
+      order by r.created_at desc limit 100`,
     sql<StudentInfo[]>`
       select id, memorized_parts, current_level from students where user_id = ${user.id} limit 1`,
     sql<MistakeSummary[]>`

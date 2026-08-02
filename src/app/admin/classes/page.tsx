@@ -37,8 +37,9 @@ export default async function AdminClassesPage({
   const page = parsePage((await searchParams).page);
   const offset = (page - 1) * PAGE_SIZE;
   const [students, teachers, classes, [{ total }], live] = await Promise.all([
-    sql<Opt[]>`select id, full_name from students where status = 'Active' order by full_name`,
-    sql<Opt[]>`select id, full_name from teachers where status = 'Active' order by full_name`,
+    // قوائم منسدلة: سقف صريح كي لا تنمو الصفحة مع نمو الأكاديمية
+    sql<Opt[]>`select id, full_name from students where status = 'Active' order by full_name limit 500`,
+    sql<Opt[]>`select id, full_name from teachers where status = 'Active' order by full_name limit 200`,
     sql<ClassRow[]>`
       select c.id, c.start_time, c.status, c.meet_link,
              s.full_name as student_name, t.full_name as teacher_name

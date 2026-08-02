@@ -36,3 +36,18 @@ create index if not exists idx_pkg_requests_final on package_change_requests (fi
 -- الاشتراك النشط للطالب (فحص رصيد الباقة عند كل حجز/جدولة)
 create index if not exists idx_subscriptions_student_status
   on student_subscriptions (student_id, status);
+
+-- مفاتيح خارجية تستعلمها صفحات فعلاً (لا كل المفاتيح: الفهرس الزائد يبطئ الكتابة)
+create index if not exists idx_payouts_teacher on teacher_payouts (teacher_id, created_at desc);
+create index if not exists idx_student_mistakes_student on student_mistakes (student_id);
+create index if not exists idx_pkg_requests_teacher on package_change_requests (teacher_id);
+create index if not exists idx_pkg_requests_student on package_change_requests (student_id);
+create index if not exists idx_student_requests_teacher on student_teacher_requests (teacher_id, status);
+
+-- اشتراك نشط واحد لكل طالب: فحص التطبيق يقع داخل معاملة، لكن اعتماد دفعتين
+-- معلّقتين في اللحظة نفسها يجعل كلتيهما لا ترى الأخرى فتُنشأ نسختان.
+-- يفشل هذا الأمر إن وُجد تكرار سابق؛ لعرضه:
+--   select student_id, count(*) from student_subscriptions
+--   where status='active' group by student_id having count(*) > 1;
+create unique index if not exists uq_active_subscription_per_student
+  on student_subscriptions (student_id) where status = 'active';
