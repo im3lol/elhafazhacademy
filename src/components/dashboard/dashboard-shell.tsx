@@ -16,6 +16,7 @@ import {
   IconWallet,
   IconChat,
   IconSettings,
+  IconSliders,
   IconUsers,
   IconUserPlus,
   IconVideo,
@@ -129,6 +130,7 @@ const navByRole: Record<string, { title: string; groups: NavGroup[] }> = {
         label: "النظام",
         items: [
           { href: "/admin/notifications", label: "الإشعارات", icon: IconBell },
+          { href: "/admin/branding", label: "الهوية والمحتوى", icon: IconSliders },
           { href: "/admin/settings", label: "الإعدادات", icon: IconSettings },
         ],
       },
@@ -140,11 +142,16 @@ export function DashboardShell({
   role,
   email,
   unreadCount = 0,
+  brandName = "الحفظة",
+  brandLogo,
   children,
 }: {
   role: "student" | "teacher" | "admin";
   email: string;
   unreadCount?: number;
+  /** اسم المنصة وشعارها من الهوية المحفوظة */
+  brandName?: string;
+  brandLogo?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -184,10 +191,10 @@ export function DashboardShell({
       <div className="flex items-center justify-between gap-2 px-5 py-5">
         <Link href={`/${role}/dashboard`} className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-white">
-            <LogoMark className="h-7 w-7" />
+            <LogoMark className="h-7 w-7" logo={brandLogo} />
           </span>
           <span className="flex flex-col leading-none">
-            <span className="font-display text-lg font-bold">الحفظة</span>
+            <span className="font-display text-lg font-bold">{brandName}</span>
             <span className="mt-1 text-[10px] opacity-70">{title}</span>
           </span>
         </Link>
@@ -308,7 +315,7 @@ export function DashboardShell({
             <IconMenu className="h-5 w-5" />
           </button>
           <span className="flex items-center gap-2">
-            <LogoMark className="h-7 w-7" />
+            <LogoMark className="h-7 w-7" logo={brandLogo} />
             <span className="font-display text-base font-bold">{title}</span>
           </span>
         </header>

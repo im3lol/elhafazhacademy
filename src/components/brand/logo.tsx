@@ -1,10 +1,22 @@
 import { cn } from "@/lib/utils";
 
 /**
- * علامة الحفظة — محراب هندسي + مصحف مفتوح + هلال.
- * minimal، يتكيّف مع الحجم. الأخضر من الهوية والذهبي للهلال.
+ * علامة المنصة: الشعار المرفوع من لوحة الأدمن إن وُجد، وإلا العلامة المرسومة.
+ * `logo` يُمرَّر من صفحة خادم قرأت الهوية؛ ومن لا يمرّره يحصل على الافتراضي.
  */
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, logo }: { className?: string; logo?: string }) {
+  if (logo) {
+    // eslint-disable-next-line @next/next/no-img-element -- data URI: لا فائدة من مُحسّن الصور
+    return <img src={logo} alt="" aria-hidden="true" className={cn("object-contain", className)} />;
+  }
+  return <DefaultMark className={className} />;
+}
+
+/**
+ * علامة الحفظة الافتراضية — محراب هندسي + مصحف مفتوح + هلال.
+ * تتلوّن تلقائياً بألوان الهوية المختارة.
+ */
+function DefaultMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -44,22 +56,28 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-/** اللوجو الكامل: علامة + اسم + شعار نصي. */
+/** اللوجو الكامل: علامة + اسم + سطر تعريفي — كلها من هوية المنصة. */
 export function Logo({
   className,
   withText = true,
   size = "md",
+  logo,
+  name = "الحفظة",
+  tagline = "لتحفيظ وتعليم القرآن الكريم",
 }: {
   className?: string;
   withText?: boolean;
   size?: "sm" | "md" | "lg";
+  logo?: string;
+  name?: string;
+  tagline?: string;
 }) {
   const mark = {
     sm: "h-8 w-8",
     md: "h-10 w-10",
     lg: "h-12 w-12",
   }[size];
-  const name = {
+  const nameSize = {
     sm: "text-lg",
     md: "text-xl",
     lg: "text-2xl",
@@ -67,14 +85,12 @@ export function Logo({
 
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
-      <LogoMark className={mark} />
+      <LogoMark className={mark} logo={logo} />
       {withText && (
         <span className="flex flex-col leading-none">
-          <span className={cn("font-display font-bold", name)}>الحفظة</span>
-          {size !== "sm" && (
-            <span className="mt-1 text-[10px] font-medium text-muted">
-              لتحفيظ وتعليم القرآن الكريم
-            </span>
+          <span className={cn("font-display font-bold", nameSize)}>{name}</span>
+          {size !== "sm" && tagline && (
+            <span className="mt-1 text-[10px] font-medium text-muted">{tagline}</span>
           )}
         </span>
       )}

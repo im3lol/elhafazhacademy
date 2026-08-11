@@ -3,6 +3,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { getActivePackages } from "@/lib/packages";
+import { getBranding } from "@/lib/branding";
 import {
   IconUsers,
   IconChart,
@@ -19,65 +20,17 @@ import {
   IconHeart,
 } from "@/components/icons";
 
-const navLinks = [
-  { href: "/", label: "الرئيسية" },
-  { href: "#why", label: "عن الأكاديمية" },
-  { href: "#features", label: "البرامج" },
-  { href: "#teachers", label: "المعلمون" },
-  { href: "#packages", label: "الأسعار" },
-  { href: "#faq", label: "الأسئلة الشائعة" },
-  { href: "#footer", label: "تواصل معنا" },
-];
 
-// بيانات عرض (ديمو) — تُستبدل بأرقام الجهة المشترية عند التسليم.
-const stats = [
-  { value: "+١٠٬٠٠٠", label: "طالب وطالبة", icon: IconUsers },
-  { value: "+٥٠", label: "معلم متخصص", icon: IconCap },
-  { value: "+١٠٠٬٠٠٠", label: "حصة تعليمية", icon: IconVideo },
-  { value: "٩٥٪", label: "معدل رضا الطلاب", icon: IconStar },
-];
+// الأيقونات تبقى في الكود (اختيار بصري)، والنصوص كلها من لوحة الأدمن.
+// تدور على العناصر مهما كان عددها.
+const WHY_ICONS = [IconCap, IconChart, IconCalendar, IconVideo, IconClipboard, IconShield];
+const FEATURE_ICONS = [IconChart, IconClipboard, IconCalendar, IconBell, IconClock, IconSliders];
+const STAT_ICONS = [IconUsers, IconCap, IconVideo, IconStar];
 
-const whyUs = [
-  { icon: IconCap, title: "معلمون متخصصون", desc: "نخبة من المعلمين والمعلمات ذوي الخبرة في التحفيظ والتجويد." },
-  { icon: IconChart, title: "متابعة مستمرة", desc: "تقارير دورية توضح مستوى الطالب وتقدمه." },
-  { icon: IconCalendar, title: "جداول مرنة", desc: "اختر الأيام والأوقات التي تناسبك." },
-  { icon: IconVideo, title: "تعليم عن بُعد", desc: "من أي مكان في العالم عبر جلسات مباشرة." },
-  { icon: IconClipboard, title: "تقييمات دقيقة", desc: "متابعة للحفظ والتجويد والالتزام والحضور." },
-  { icon: IconShield, title: "بيئة آمنة", desc: "منصة تعليمية منظمة وآمنة للطلاب والأهالي." },
-];
-
-const steps = [
-  { n: "١", title: "التسجيل", desc: "أنشئ حسابك خلال دقائق." },
-  { n: "٢", title: "تحديد المستوى", desc: "جلسة تقييم لتحديد مستواك الحالي." },
-  { n: "٣", title: "اختيار الباقة", desc: "اختر عدد الحصص المناسب لك." },
-  { n: "٤", title: "بدء الرحلة", desc: "ابدأ الحفظ والمتابعة مع معلمك مباشرة." },
-];
-
-const features = [
-  { icon: IconChart, title: "تقارير الأداء", desc: "متابعة تفصيلية لمستوى الحفظ والتجويد." },
-  { icon: IconClipboard, title: "متابعة الأخطاء", desc: "تسجيل الأخطاء المتكررة وخطة تحسينها." },
-  { icon: IconCalendar, title: "إدارة الحصص", desc: "جدول منظم وتنبيهات تلقائية قبل كل حصة." },
-  { icon: IconBell, title: "إشعارات فورية", desc: "تنبيه قبل كل حصة وعند صدور كل تقرير." },
-  { icon: IconClock, title: "تقييمات دورية", desc: "قياس مستمر لمستوى الطالب وتطوره." },
-  { icon: IconSliders, title: "مرونة كاملة", desc: "إمكانية زيادة أو تقليل عدد الحصص بسهولة." },
-];
-
-const parentItems = ["مستوى التقدم", "الحضور والغياب", "تقييمات المعلم", "التقارير الشهرية", "ملاحظات التحسين"];
-const teacherCriteria = ["الإتقان والتجويد", "الخبرة التعليمية", "مهارات التواصل", "الالتزام والمتابعة"];
-
-// بيانات عرض (ديمو) — تُستبدل بشهادات الجهة المشترية عند التسليم.
-const testimonials = [
-  { quote: "منصة منظمة وسهلة، ساعدتني على الالتزام بالحفظ.", name: "طالب" },
-  { quote: "التقارير والمتابعة كانت سبباً رئيسياً في تطوري.", name: "ولي أمر" },
-  { quote: "أفضل تجربة تعليمية مررت بها في حفظ القرآن.", name: "طالبة" },
-];
-
-const faqs = [
-  { q: "هل يمكن الدراسة من خارج مصر؟", a: "نعم، المنصة متاحة للطلاب من جميع الدول." },
-  { q: "هل يمكن تغيير مواعيد الحصص؟", a: "نعم، وفقاً للسياسات المتاحة." },
-  { q: "هل أستطيع تغيير الباقة؟", a: "نعم، يمكن تقديم طلب تعديل من خلال المنصة." },
-  { q: "هل يتم توفير تقارير دورية؟", a: "نعم، يتم إصدار تقارير متابعة بشكل مستمر." },
-];
+function StatIcon({ i }: { i: number }) {
+  const Icon = STAT_ICONS[i % STAT_ICONS.length];
+  return <Icon className="h-9 w-9 shrink-0 text-gold" />;
+}
 
 const packageBlurb: Record<string, string> = {
   "الباقة الأساسية": "عدد مناسب من الحصص الأسبوعية لبناء أساس قوي.",
@@ -98,6 +51,10 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   // الصفحة العامة لا يجب أن تنهار لو تعذّرت القاعدة لحظياً — تظهر بلا باقات بدلاً من خطأ ٥٠٠.
+  const { branding, landing } = await getBranding();
+  const { hero, stats, why, steps, features, parents, teachers, packages, testimonials, faq, finalCta, footer } = landing;
+  const navLinks = landing.nav;
+
   let pkgs: PkgRow[] = [];
   try {
     pkgs = await getActivePackages();
@@ -110,7 +67,7 @@ export default async function Home() {
       {/* ===== Header ===== */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Logo size="sm" />
+          <Logo size="sm" logo={branding.logo} name={branding.name} tagline={branding.tagline} />
           <nav className="hidden items-center gap-6 lg:flex">
             {navLinks.map((l) => (
               <a key={l.label} href={l.href} className="text-sm font-medium text-muted transition-colors hover:text-brand">
@@ -135,26 +92,24 @@ export default async function Home() {
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-2 lg:py-24">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-brand-subtle px-4 py-1.5 text-sm font-medium text-brand">
-              <IconStar className="h-4 w-4 text-gold" /> منصة تعليمية متكاملة لحفظ القرآن
+              <IconStar className="h-4 w-4 text-gold" /> {hero.badge}
             </span>
             <h1 className="mt-6 font-display text-4xl font-black leading-[1.2] sm:text-5xl">
-              رحلة منظمة لحفظ القرآن الكريم
-              <span className="text-brand"> بإشراف معلمين متخصصين</span>
+              {hero.title}
+              <span className="text-brand"> {hero.titleAccent}</span>
             </h1>
             <p className="mt-6 max-w-xl leading-relaxed text-muted">
-              ابدأ رحلتك في حفظ القرآن الكريم من أي مكان في العالم مع متابعة مستمرة،
-              تقارير أداء دقيقة، وجدول مرن يناسب وقتك. نوفّر بيئة تعليمية احترافية تجمع
-              بين جودة التعليم وسهولة المتابعة لضمان تقدّم ثابت لكل طالب.
+              {hero.description}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register/student" className={buttonClasses({ size: "lg" })}>
-                ابدأ الآن
+                {hero.ctaPrimary}
               </Link>
               <Link
                 href="/register/student"
                 className={buttonClasses({ variant: "outline", size: "lg", className: "border-gold text-gold hover:bg-gold-subtle" })}
               >
-                احجز جلسة تقييم مجانية
+                {hero.ctaSecondary}
               </Link>
             </div>
             <div className="mt-8 flex items-center gap-3 text-sm">
@@ -163,8 +118,8 @@ export default async function Home() {
                   <IconStar key={i} className="h-4 w-4" />
                 ))}
               </div>
-              <span className="font-bold">٤٫٩/٥</span>
-              <span className="text-muted">من آلاف الطلاب</span>
+              <span className="font-bold">{hero.ratingValue}</span>
+              <span className="text-muted">{hero.ratingLabel}</span>
             </div>
           </div>
 
@@ -175,9 +130,9 @@ export default async function Home() {
         {/* ===== Stats band ===== */}
         <section className="bg-brand text-brand-foreground">
           <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 lg:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="flex items-center gap-4">
-                <s.icon className="h-9 w-9 shrink-0 text-gold" />
+            {stats.map((s, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <StatIcon i={i} />
                 <div>
                   <div className="font-display text-2xl font-black sm:text-3xl">{s.value}</div>
                   <div className="text-sm opacity-90">{s.label}</div>
@@ -188,22 +143,22 @@ export default async function Home() {
         </section>
 
         {/* ===== Why Us ===== */}
-        <Section id="why" title="لماذا أكاديمية الحفظة؟" subtitle="كل ما تحتاجه لرحلة حفظ منظمة وموثوقة">
+        <Section id="why" title={why.title} subtitle={why.subtitle}>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {whyUs.map((f) => (
-              <FeatureCard key={f.title} {...f} />
+            {why.items.map((f, i) => (
+              <FeatureCard key={i} icon={WHY_ICONS[i % WHY_ICONS.length]} {...f} />
             ))}
           </div>
         </Section>
 
         {/* ===== How It Works ===== */}
         <section className="bg-surface/60">
-          <Section title="كيف تبدأ؟" subtitle="أربع خطوات بسيطة تفصلك عن رحلتك">
+          <Section title={steps.title} subtitle={steps.subtitle}>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {steps.map((s) => (
-                <div key={s.n} className="rounded-2xl border border-border bg-surface p-6 text-center">
+              {steps.items.map((s, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-surface p-6 text-center">
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand font-display text-lg font-black text-brand-foreground">
-                    {s.n}
+                    {(i + 1).toLocaleString("ar-EG")}
                   </div>
                   <h3 className="mt-4 font-display text-lg font-bold">{s.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted">{s.desc}</p>
@@ -214,34 +169,23 @@ export default async function Home() {
         </section>
 
         {/* ===== Features ===== */}
-        <Section id="features" title="منصة تعليمية متكاملة" subtitle="أدوات احترافية لإدارة رحلة الحفظ">
+        <Section id="features" title={features.title} subtitle={features.subtitle}>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <FeatureCard key={f.title} {...f} />
+            {features.items.map((f, i) => (
+              <FeatureCard key={i} icon={FEATURE_ICONS[i % FEATURE_ICONS.length]} {...f} />
             ))}
           </div>
         </Section>
 
         {/* ===== Parent + Teachers ===== */}
         <section className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-16 lg:grid-cols-2">
-          <InfoPanel
-            icon={IconHeart}
-            title="راحة واطمئنان لأولياء الأمور"
-            desc="يمكن لولي الأمر متابعة كل ما يخص أبنائه من خلال تقارير واضحة ومنظمة:"
-            items={parentItems}
-          />
-          <InfoPanel
-            icon={IconCap}
-            title="معلمون مؤهلون ومتابعة احترافية"
-            desc="يتم اختيار المعلمين وفق معايير دقيقة لضمان أفضل تجربة تعليمية:"
-            items={teacherCriteria}
-            id="teachers"
-          />
+          <InfoPanel icon={IconHeart} title={parents.title} desc={parents.desc} items={parents.items} />
+          <InfoPanel icon={IconCap} title={teachers.title} desc={teachers.desc} items={teachers.items} id="teachers" />
         </section>
 
         {/* ===== Packages ===== */}
         <section className="bg-surface/60" id="packages">
-          <Section title="اختر الباقة المناسبة لك" subtitle="باقات مرنة تناسب كل مستوى وهدف">
+          <Section title={packages.title} subtitle={packages.subtitle}>
             {/* ثلاث باقات فقط على الصفحة الرئيسية — البقية خلف رابط «عرض جميع الباقات» */}
             <div className="grid gap-5 sm:grid-cols-3">
               {pkgs.slice(0, 3).map((p, i) => {
@@ -294,9 +238,9 @@ export default async function Home() {
         </section>
 
         {/* ===== Testimonials ===== */}
-        <Section title="ماذا يقول طلابنا؟" subtitle="تجارب من مجتمع الحفظة">
+        <Section title={testimonials.title} subtitle={testimonials.subtitle}>
           <div className="grid gap-5 sm:grid-cols-3">
-            {testimonials.map((t, i) => (
+            {testimonials.items.map((t, i) => (
               <div key={i} className="rounded-2xl border border-border bg-surface p-7">
                 <div className="font-display text-4xl leading-none text-gold">”</div>
                 <p className="mt-2 leading-relaxed">{t.quote}</p>
@@ -308,10 +252,10 @@ export default async function Home() {
 
         {/* ===== FAQ ===== */}
         <section className="bg-surface/60" id="faq">
-          <Section title="الأسئلة الشائعة" subtitle="إجابات لأكثر ما يهمّك">
+          <Section title={faq.title} subtitle={faq.subtitle}>
             <div className="mx-auto max-w-2xl space-y-3">
-              {faqs.map((f) => (
-                <details key={f.q} className="group rounded-2xl border border-border bg-surface p-5">
+              {faq.items.map((f, i) => (
+                <details key={i} className="group rounded-2xl border border-border bg-surface p-5">
                   <summary className="flex cursor-pointer list-none items-center justify-between font-medium">
                     {f.q}
                     <span className="text-brand transition-transform group-open:rotate-45">+</span>
@@ -326,23 +270,20 @@ export default async function Home() {
         {/* ===== Final CTA ===== */}
         <section className="bg-brand text-brand-foreground">
           <div className="mx-auto w-full max-w-4xl px-6 py-16 text-center">
-            <h2 className="font-display text-3xl font-black sm:text-4xl">ابدأ رحلتك مع القرآن اليوم</h2>
-            <p className="mx-auto mt-4 max-w-2xl leading-relaxed opacity-90">
-              انضم إلى آلاف الطلاب الذين بدؤوا رحلتهم في حفظ القرآن الكريم ضمن بيئة
-              تعليمية منظمة واحترافية.
-            </p>
+            <h2 className="font-display text-3xl font-black sm:text-4xl">{finalCta.title}</h2>
+            <p className="mx-auto mt-4 max-w-2xl leading-relaxed opacity-90">{finalCta.desc}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 href="/register/student"
                 className={buttonClasses({ size: "lg", className: "bg-gold text-gold-foreground hover:bg-gold-hover" })}
               >
-                ابدأ الآن
+                {finalCta.ctaPrimary}
               </Link>
               <Link
                 href="/register/student"
                 className={buttonClasses({ variant: "outline", size: "lg", className: "border-white/40 bg-transparent text-brand-foreground hover:bg-white/10" })}
               >
-                احجز جلسة تقييم مجانية
+                {finalCta.ctaSecondary}
               </Link>
             </div>
           </div>
@@ -354,28 +295,25 @@ export default async function Home() {
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <span className="flex items-center gap-2">
-              <LogoMark className="h-9 w-9" />
-              <span className="font-display text-lg font-bold">الحفظة</span>
+              <LogoMark className="h-9 w-9" logo={branding.logo} />
+              <span className="font-display text-lg font-bold">{branding.name}</span>
             </span>
-            <p className="mt-3 text-sm leading-relaxed opacity-70">
-              منصة تعليمية متكاملة تهدف إلى تيسير تجربة حفظ القرآن الكريم بإشراف
-              معلمين متخصصين ومتابعة دقيقة.
-            </p>
+            <p className="mt-3 text-sm leading-relaxed opacity-70">{footer.about}</p>
           </div>
-          <FooterCol title="روابط سريعة" links={["عن الأكاديمية", "البرامج", "المعلمون", "الأسعار"]} />
-          <FooterCol title="البرامج" links={["مراجعة وحفظ", "تجويد وأحكام", "تصحيح تلاوة", "إعداد محفّظين"]} />
+          <FooterCol title={footer.linksTitle} links={footer.links} />
+          <FooterCol title={footer.programsTitle} links={footer.programs} />
           <div>
-            <h4 className="font-display text-base font-bold">تواصل معنا</h4>
+            <h4 className="font-display text-base font-bold">{footer.contactTitle}</h4>
             <ul className="mt-4 space-y-2 text-sm opacity-80">
-              <li dir="ltr" className="text-right">+20 101 234 5678</li>
-              <li dir="ltr" className="text-right">info@huffazacademy.com</li>
-              <li>القاهرة — مصر</li>
+              <li dir="ltr" className="text-right">{footer.phone}</li>
+              <li dir="ltr" className="text-right">{footer.email}</li>
+              <li>{footer.address}</li>
             </ul>
           </div>
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto w-full max-w-6xl px-6 py-5 text-center text-sm opacity-60">
-            جميع الحقوق محفوظة © ٢٠٢٦ أكاديمية الحفظة
+            {footer.copyright}
           </div>
         </div>
       </footer>
