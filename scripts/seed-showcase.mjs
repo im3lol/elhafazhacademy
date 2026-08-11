@@ -7,26 +7,10 @@
 //
 // idempotent: يحذف بيانات العرض السابقة ثم يعيد بناءها، فلا تتراكم.
 // كل الحسابات تحمل اللاحقة @demo.elhafazah — وهي مفتاح الحذف عند التسليم.
-import postgres from "postgres";
 import bcrypt from "bcryptjs";
-import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = process.env.DATABASE_URL
-  ? { DATABASE_URL: process.env.DATABASE_URL }
-  : Object.fromEntries(
-      readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-        .split("\n")
-        .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-        .map((l) => {
-          const i = l.indexOf("=");
-          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-        }),
-    );
-
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+const sql = connect();
 
 const DOMAIN = "@demo.elhafazah";
 const PASSWORD = "demo1234";

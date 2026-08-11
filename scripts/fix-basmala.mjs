@@ -1,23 +1,8 @@
 // يفصل البسملة عن نص الآية الأولى لكل السور عدا الفاتحة (حيث البسملة = الآية ١).
 // كما يزيل علامة BOM إن وُجدت. آمن للتكرار. التشغيل: node scripts/fix-basmala.mjs
-import postgres from "postgres";
-import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = Object.fromEntries(
-  readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-    .split("\n")
-    .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-    .map((l) => {
-      const i = l.indexOf("=");
-      return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-    }),
-);
-
-// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+const sql = connect();
 
 /** يزيل BOM، ويفصل البسملة (أول ٤ كلمات) من الآية ١ لغير الفاتحة. */
 export function cleanAyahText(text, surah, ayah) {

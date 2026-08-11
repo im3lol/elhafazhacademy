@@ -1,25 +1,9 @@
 // يحمّل تخطيط الأسطر من db/seed/quran-layout.json إلى جدول quran_words.
 // التشغيل: node scripts/seed-quran-layout.mjs   (لا يحتاج إنترنت)
-import postgres from "postgres";
 import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = process.env.DATABASE_URL
-  ? { DATABASE_URL: process.env.DATABASE_URL }
-  : Object.fromEntries(
-      readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-        .split("\n")
-        .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-        .map((l) => {
-          const i = l.indexOf("=");
-          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-        }),
-    );
-
-// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+const sql = connect();
 const { words } = JSON.parse(readFileSync(new URL("../db/seed/quran-layout.json", import.meta.url), "utf8"));
 
 const [{ n: existing }] = await sql`select count(*)::int as n from quran_words`;

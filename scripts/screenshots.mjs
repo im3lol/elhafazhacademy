@@ -23,8 +23,14 @@ const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const executablePath = existsSync(CHROME) ? CHROME : EDGE;
 
+// بيانات الأدمن من البيئة — لا تُكتب في المستودع (عام).
+// ADMIN_EMAIL=... ADMIN_PASSWORD=... node scripts/screenshots.mjs
+if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+  console.error("✖ اضبط ADMIN_EMAIL و ADMIN_PASSWORD قبل التشغيل.");
+  process.exit(1);
+}
 const ACCOUNTS = {
-  admin: { email: "admin@elhafazah.test", password: "admin1234" },
+  admin: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD },
   teacher: { email: "m.abdulrahman@demo.elhafazah", password: "demo1234" },
   student: { email: "s.omar@demo.elhafazah", password: "demo1234" },
 };

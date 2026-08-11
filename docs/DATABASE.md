@@ -24,7 +24,7 @@ docker exec -it elhafazah_db psql -U postgres -d elhafazah
 1. من لوحة Supabase: **Connect ← Transaction pooler** وانسخ السلسلة (المنفذ `6543`).
 2. ضَع كلمة مرور القاعدة مكان `[YOUR-PASSWORD]` واضبط `DATABASE_URL` في بيئة الاستضافة.
 3. أضِف `?sslmode=require` في آخر السلسلة.
-4. ابذر القرآن والأدمن مرة واحدة: `npm run seed:quran && npm run seed:quran-layout && node scripts/seed-admin.mjs`.
+4. هيّئ القاعدة مرة واحدة: `npm run setup`، ثم أنشئ حساب الإدارة من صفحة `/setup`.
 
 > استخدم **Transaction pooler** لا الاتصال المباشر: بيئات serverless تفتح اتصالات كثيرة قصيرة العمر.
 
@@ -42,7 +42,15 @@ Supabase يفتح واجهة REST على schema `public` لأي شخص يملك 
 
 ## التهيئة التلقائية
 
-عند **أول** تشغيل للقاعدة (volume فارغ) تُطبَّق `db/init/*.sql` تلقائياً:
+`npm run setup` (ويُستدعى داخل `npm run build`) يطبّق المخطط ويبذر القرآن على أي
+قاعدة، **محروساً**: ينشئ الجداول فقط إن لم تكن موجودة، ويتخطّى البذر إن كانت
+البيانات فيها. فتُهيَّأ نسخة كل أكاديمية تلقائياً عند أول نشر — راجع
+[HANDOVER.md](HANDOVER.md).
+
+يقرأ السكربت `DATABASE_URL` أو `POSTGRES_URL` أو `POSTGRES_URL_NON_POOLING`
+(الأخيران يحقنهما تكامل Supabase على Vercel)، ويفضّل الاتصال المباشر للـ DDL.
+
+عند **أول** تشغيل لحاوية Postgres محلياً (volume فارغ) تُطبَّق `db/init/*.sql` تلقائياً كذلك:
 
 | الملف | المحتوى |
 |---|---|
@@ -77,14 +85,16 @@ docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/05_indexes.s
 ## البذور
 
 ```bash
-# داخل Docker (مرّة واحدة): قرآن + أدمن + بيانات تجريبية
-docker compose --profile seed run --rm seed
+npm run setup               # المخطط + الأدوار والباقات + القرآن (يغطي كل ما تحته)
 
-# أو يدوياً (مع DATABASE_URL أو .env.local)
+# أو منفردة (مع DATABASE_URL أو .env.local)
 npm run seed:quran          # نص القرآن (السور/الآيات + القرّاء)
 npm run seed:quran-layout   # تخطيط الأسطر (quran_words) لخط QCF
-node scripts/seed-admin.mjs # حساب الأدمن
 node scripts/seed-demo.mjs  # حسابات تجريبية (معلم + طالب)
+
+# حساب الإدارة: المسار الطبيعي هو صفحة /setup في المتصفح.
+# للطوارئ فقط — لا كلمة مرور افتراضية في المستودع:
+node scripts/seed-admin.mjs <البريد> <كلمة المرور> "الاسم"
 ```
 
 > السكربتات تقرأ `DATABASE_URL` من البيئة، وإلا من `.env.local` — فتعمل داخل Docker وخارجه.
@@ -95,7 +105,6 @@ node scripts/seed-demo.mjs  # حسابات تجريبية (معلم + طالب)
 
 | الدور | البريد | كلمة المرور | الحالة |
 |---|---|---|---|
-| أدمن | `admin@elhafazah.test` | `admin1234` | مفعّل |
 | معلم | `teacher@demo.test` | `demo1234` | Active · تكلفة حصة 80 |
 | طالب | `student@demo.test` | `demo1234` | Active · لدى المعلم · الباقة الأساسية |
 

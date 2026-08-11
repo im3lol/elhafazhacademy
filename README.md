@@ -69,15 +69,20 @@ APP_PORT=9000 docker compose up -d   # تشغيل على منفذ آخر (Linux/
 
 ---
 
-## 🔑 الدخول (حسابات جاهزة بعد البذر)
+## 🔑 الدخول
+
+**حساب الإدارة**: يُنشأ من صفحة `/setup` عند أول تشغيل — ببريد وكلمة مرور من
+اختيارك. الصفحة تُغلق نفسها بعد أول أدمن. لا توجد كلمة مرور افتراضية في المستودع.
+
+**حسابا العرض** (بعد `node scripts/seed-demo.mjs` — للاستكشاف فقط):
 
 | الدور | البريد | كلمة المرور |
 |---|---|---|
-| **أدمن** | `admin@elhafazah.test` | `admin1234` |
 | **معلم** | `teacher@demo.test` | `demo1234` |
 | **طالب** | `student@demo.test` | `demo1234` |
 
-> الحسابان التجريبيان (معلم/طالب) مفعّلان ومربوطان (الطالب لدى المعلم وعلى الباقة الأساسية). **غيّر كلمات المرور قبل أي استخدام حقيقي** (الإعدادات → كلمة المرور).
+> مفعّلان ومربوطان (الطالب لدى المعلم وعلى الباقة الأساسية).
+> **احذفهما قبل أي استخدام حقيقي.**
 
 ---
 
@@ -89,11 +94,12 @@ APP_PORT=9000 docker compose up -d   # تشغيل على منفذ آخر (Linux/
 
 | السكربت | الوظيفة |
 |---|---|
-| `seed:quran` / `seed:quran-layout` | نص القرآن + تخطيط الأسطر (QCF) |
-| `seed-admin.mjs` | حساب الأدمن |
-| `seed-demo.mjs` | حسابات معلم/طالب تجريبية |
+| `setup` | **المخطط + الأدوار والباقات + القرآن** — آمن للتكرار، ويعمل ضمن `npm run build` |
+| `seed:quran` / `seed:quran-layout` | نص القرآن + تخطيط الأسطر (QCF) منفردَين |
+| `seed-admin.mjs` | حساب أدمن للطوارئ (المسار الطبيعي: صفحة `/setup`) |
+| `seed-demo.mjs` / `seed-showcase.mjs` | بيانات تجريبية / بيانات عرض كاملة (`--clean` للحذف) |
 
-تفاصيل أوفى: **[docs/DATABASE.md](docs/DATABASE.md)** · النسخ الاحتياطي: **[docs/BACKUP.md](docs/BACKUP.md)**.
+تفاصيل أوفى: **[docs/DATABASE.md](docs/DATABASE.md)** · تسليم نسخة لأكاديمية: **[docs/HANDOVER.md](docs/HANDOVER.md)** · النسخ الاحتياطي: **[docs/BACKUP.md](docs/BACKUP.md)**.
 
 ---
 
@@ -103,9 +109,8 @@ APP_PORT=9000 docker compose up -d   # تشغيل على منفذ آخر (Linux/
 docker compose up -d db        # Postgres فقط
 cp .env.local.example .env.local   # واضبط DATABASE_URL و AUTH_SECRET
 npm install
-npm run seed:quran && npm run seed:quran-layout
-node scripts/seed-admin.mjs && node scripts/seed-demo.mjs
-npm run dev        # http://localhost:3000
+npm run setup      # المخطط + الأدوار والباقات + القرآن (آمن للتكرار)
+npm run dev        # http://localhost:3000 — ثم /setup لإنشاء حساب الإدارة
 npm run build      # بناء إنتاجي
 npm test           # الاختبارات (٤٠)
 npm run lint       # فحص الجودة

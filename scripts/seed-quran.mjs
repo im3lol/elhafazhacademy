@@ -1,25 +1,9 @@
 // يحمّل نص القرآن من db/seed/quran.json إلى الجداول + يبذر القرّاء (everyayah).
 // التشغيل: node scripts/seed-quran.mjs   (لا يحتاج إنترنت)
-import postgres from "postgres";
 import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = process.env.DATABASE_URL
-  ? { DATABASE_URL: process.env.DATABASE_URL }
-  : Object.fromEntries(
-      readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-        .split("\n")
-        .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-        .map((l) => {
-          const i = l.indexOf("=");
-          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-        }),
-    );
-
-// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+const sql = connect();
 const { surahs, ayahs } = JSON.parse(
   readFileSync(new URL("../db/seed/quran.json", import.meta.url), "utf8"),
 );

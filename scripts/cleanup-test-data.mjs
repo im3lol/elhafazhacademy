@@ -2,24 +2,9 @@
 // التشغيل: node scripts/cleanup-test-data.mjs
 // يحذف: الإشعارات التجريبية، تقارير/أخطاء سارة المُضافة يدوياً، ورسائل الشكوى التجريبية.
 // لا يلمس: حسابات المستخدمين، الحصص، الباقات، أو ربط Google.
-import postgres from "postgres";
-import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = Object.fromEntries(
-  readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-    .split("\n")
-    .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-    .map((l) => {
-      const i = l.indexOf("=");
-      return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-    }),
-);
-
-// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+const sql = connect();
 
 const SARA = "sara.student@test.com";
 

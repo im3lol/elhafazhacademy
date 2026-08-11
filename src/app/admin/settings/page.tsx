@@ -4,11 +4,55 @@ import { TELEGRAM_SETTING_KEY } from "@/lib/telegram/client";
 import { EMAIL_SETTING_KEY } from "@/lib/email/client";
 import { disconnectGoogle, saveGoogleCreds, clearGoogleCreds, saveAcademyPayment, saveTelegramConfig, disconnectTelegram, saveEmailConfig } from "@/lib/admin/settings-actions";
 import { getSettings, ACADEMY_PAYMENT_KEY, type AcademyPayment } from "@/lib/settings";
+import { sql, dbInfo } from "@/lib/db";
+import { appUrl } from "@/lib/app-url";
 import { Card } from "@/components/ui/card";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { FormMessage, Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { requirePermissionPage } from "@/lib/auth/guards";
+
+type DbStats = {
+  tables: number;
+  words: number;
+  ayahs: number;
+  users: number;
+  students: number;
+  teachers: number;
+  classes: number;
+};
+
+/** عدّادات القاعدة في رحلة واحدة — للعرض فقط، لا تكشف أي سرّ. */
+async function dbStats(): Promise<DbStats | null> {
+  try {
+    const [row] = await sql<DbStats[]>`
+      select
+        (select count(*)::int from information_schema.tables
+          where table_schema = 'public' and table_type = 'BASE TABLE') as tables,
+        (select count(*)::int from quran_words)  as words,
+        (select count(*)::int from quran_ayahs)  as ayahs,
+        (select count(*)::int from users)        as users,
+        (select count(*)::int from students)     as students,
+        (select count(*)::int from teachers)     as teachers,
+        (select count(*)::int from classes)      as classes`;
+    return row;
+  } catch {
+    return null; // قاعدة غير مهيّأة — البطاقة تعرض تحذيراً بدل أن تُسقط الصفحة
+  }
+}
+
+const num = (n: number) => n.toLocaleString("ar-EG");
+
+function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className="rounded-xl bg-background p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`mt-1 font-display text-lg font-bold ${warn ? "text-danger" : ""}`} dir="auto">
+        {value}
+      </p>
+    </div>
+  );
+}
 
 const messages: Record<string, { type: "error" | "success"; text: string }> = {
   connected: { type: "success", text: "تم ربط حساب Google بنجاح." },
@@ -30,13 +74,17 @@ export default async function AdminSettingsPage({
   const msg = google ? messages[google] : null;
 
   // كل الإعدادات من نفس الجدول: رحلة واحدة بدل ست
-  const s = await getSettings([
-    GOOGLE_SETTING_KEY,
-    GOOGLE_CREDS_KEY,
-    ACADEMY_PAYMENT_KEY,
-    TELEGRAM_SETTING_KEY,
-    EMAIL_SETTING_KEY,
+  const [s, db] = await Promise.all([
+    getSettings([
+      GOOGLE_SETTING_KEY,
+      GOOGLE_CREDS_KEY,
+      ACADEMY_PAYMENT_KEY,
+      TELEGRAM_SETTING_KEY,
+      EMAIL_SETTING_KEY,
+    ]),
+    dbStats(),
   ]);
+  const conn = dbInfo();
   const tokens = s[GOOGLE_SETTING_KEY] as { refresh_token?: string; email?: string } | undefined;
   const gc = s[GOOGLE_CREDS_KEY] as { client_id?: string; client_secret?: string; redirect_uri?: string } | undefined;
   const pay = s[ACADEMY_PAYMENT_KEY] as AcademyPayment | undefined;
@@ -46,8 +94,8 @@ export default async function AdminSettingsPage({
   const connected = !!tokens?.refresh_token;
   const email = tokens?.email ?? null;
   const hasCreds = !!(gc?.client_id || process.env.GOOGLE_CLIENT_ID) && !!(gc?.client_secret || process.env.GOOGLE_CLIENT_SECRET);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const defaultRedirect = `${appUrl}/api/google/callback`;
+  const base = appUrl();
+  const defaultRedirect = `${base}/api/google/callback`;
 
   return (
     <div className="space-y-6">
@@ -168,7 +216,7 @@ export default async function AdminSettingsPage({
           <div className="rounded-xl bg-background p-3 text-xs text-muted">
             <p className="mb-1 font-medium text-foreground">خطوة الربط (مرة واحدة):</p>
             <p dir="ltr" className="break-all">
-              GET https://api.telegram.org/bot&lt;TOKEN&gt;/setWebhook?url={appUrl}/api/telegram/webhook&amp;secret_token=&lt;SECRET&gt;
+              GET https://api.telegram.org/bot&lt;TOKEN&gt;/setWebhook?url={base}/api/telegram/webhook&amp;secret_token=&lt;SECRET&gt;
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -238,6 +286,51 @@ export default async function AdminSettingsPage({
           </Field>
           <Button type="submit" size="sm">حفظ إعداد البريد</Button>
         </form>
+      </Card>
+
+      <Card className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-bold">قاعدة البيانات</h2>
+            <p className="mt-1 text-sm text-muted">
+              حالة الاتصال والمحتوى — للاطلاع فقط. تُهيَّأ القاعدة تلقائياً عند النشر.
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              db ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
+            }`}
+          >
+            {db ? "متصلة" : "غير مهيّأة"}
+          </span>
+        </div>
+
+        <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Stat label="الخادم" value={conn.host} />
+          <Stat label="القاعدة" value={`${conn.database} · ${conn.port}`} />
+          <Stat label="نوع الاتصال" value={conn.pooled ? "مُجمَّع (transaction)" : "مباشر"} />
+          {db && (
+            <>
+              <Stat label="عدد الجداول" value={num(db.tables)} warn={db.tables < 34} />
+              <Stat
+                label="كلمات المصحف"
+                value={num(db.words)}
+                warn={db.words < 83665}
+              />
+              <Stat label="الآيات" value={num(db.ayahs)} warn={db.ayahs < 6236} />
+              <Stat label="المستخدمون" value={num(db.users)} />
+              <Stat label="الطلاب / المعلمون" value={`${num(db.students)} / ${num(db.teachers)}`} />
+              <Stat label="الحصص" value={num(db.classes)} />
+            </>
+          )}
+        </div>
+
+        {db && db.words < 83665 && (
+          <p className="rounded-xl bg-danger/10 p-3 text-xs leading-relaxed text-danger">
+            بذرة المصحف ناقصة — صفحات المصحف قد تظهر فارغة. شغّل{" "}
+            <span dir="ltr" className="font-mono">npm run setup</span> لإكمالها.
+          </p>
+        )}
       </Card>
     </div>
   );

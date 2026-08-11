@@ -1,30 +1,27 @@
-// إنشاء/تحديث حساب أدمن. التشغيل: node scripts/seed-admin.mjs
-import postgres from "postgres";
+// إنشاء/تحديث حساب أدمن — للطوارئ واستعادة الوصول.
+// المسار الطبيعي لأول حساب هو صفحة /setup في المتصفح.
+//
+// التشغيل:
+//   node scripts/seed-admin.mjs <البريد> <كلمة المرور> ["الاسم الكامل"]
+//   ADMIN_EMAIL=... ADMIN_PASSWORD=... node scripts/seed-admin.mjs
 import bcrypt from "bcryptjs";
-import { readFileSync } from "node:fs";
+import { connect } from "./_env.mjs";
 
-const env = process.env.DATABASE_URL
-  ? { DATABASE_URL: process.env.DATABASE_URL }
-  : Object.fromEntries(
-      readFileSync(new URL("../.env.local", import.meta.url), "utf8")
-        .split("\n")
-        .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-        .map((l) => {
-          const i = l.indexOf("=");
-          return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-        }),
-    );
+const EMAIL = process.argv[2] || process.env.ADMIN_EMAIL;
+const PASSWORD = process.argv[3] || process.env.ADMIN_PASSWORD;
+const FULL_NAME = process.argv[4] || process.env.ADMIN_NAME || "مدير الأكاديمية";
 
-// prepare: false لازم لمجمّع Supabase في وضع transaction (منفذ 6543)
-const sql = postgres(env.DATABASE_URL, {
-  max: 1,
-  prepare: !/pooler\.supabase\.com|:6543/.test(env.DATABASE_URL ?? ""),
-});
+// لا كلمة مرور افتراضية: المستودع عام، وأي قيمة مكتوبة هنا تصبح مفتاحاً لكل نسخة منشورة.
+if (!EMAIL || !PASSWORD) {
+  console.error("✖ الاستخدام: node scripts/seed-admin.mjs <البريد> <كلمة المرور> [\"الاسم\"]");
+  process.exit(1);
+}
+if (PASSWORD.length < 8) {
+  console.error("✖ كلمة المرور قصيرة — ٨ أحرف على الأقل.");
+  process.exit(1);
+}
 
-const EMAIL = "admin@elhafazah.test";
-const PASSWORD = "admin1234";
-const FULL_NAME = "مدير الأكاديمية";
-
+const sql = connect();
 const hash = await bcrypt.hash(PASSWORD, 10);
 
 const [user] = await sql`
@@ -40,8 +37,6 @@ await sql`
   values (${user.id}, ${FULL_NAME}, ${role?.id ?? null}, 'Active')
   on conflict (user_id) do update set role_id = excluded.role_id, status = 'Active'`;
 
-console.log("✅ حساب الأدمن جاهز:");
-console.log("   البريد:", EMAIL);
-console.log("   كلمة المرور:", PASSWORD);
+console.log("✅ حساب الأدمن جاهز:", EMAIL);
 
 await sql.end();

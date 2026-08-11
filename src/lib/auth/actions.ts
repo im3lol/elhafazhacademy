@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { sendEmail } from "@/lib/email/client";
+import { appUrl } from "@/lib/app-url";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, homeForType } from "@/lib/auth/session";
 import { checkThrottle, recordFailure, clearThrottle } from "@/lib/auth/throttle";
@@ -181,7 +182,7 @@ export async function forgotPassword(
     insert into password_resets (token, user_id, expires_at)
     values (${hashToken(token)}, ${user.id}, now() + interval '1 hour')`;
 
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const base = appUrl();
   const link = `${base}/reset-password?token=${token}`;
   await sendEmail(
     parsed.data.email,

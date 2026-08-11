@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/setup.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "setup": "node scripts/setup.mjs",
     "seed:quran": "node scripts/seed-quran.mjs",
     "fetch:quran": "node scripts/fetch-quran.mjs",
     "seed:quran-layout": "node scripts/seed-quran-layout.mjs",

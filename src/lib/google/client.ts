@@ -1,4 +1,5 @@
 import { getSetting, setSetting } from "@/lib/settings";
+import { appUrl } from "@/lib/app-url";
 
 export const GOOGLE_SETTING_KEY = "google_oauth"; // التوكن المخزّن بعد الربط
 export const GOOGLE_CREDS_KEY = "google_oauth_creds"; // Client ID/Secret (يُدار من لوحة الأدمن)
@@ -23,7 +24,7 @@ export async function getGoogleCreds(): Promise<{ clientId?: string; clientSecre
   const clientSecret = (stored?.client_secret || process.env.GOOGLE_CLIENT_SECRET || "").trim() || undefined;
   const redirectUri =
     (stored?.redirect_uri || process.env.GOOGLE_REDIRECT_URI || "").trim() ||
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/google/callback`;
+    `${appUrl()}/api/google/callback`;
   return { clientId, clientSecret, redirectUri };
 }
 

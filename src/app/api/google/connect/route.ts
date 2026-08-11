@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { getAuthUrl, GOOGLE_STATE_COOKIE } from "@/lib/google/client";
+import { appUrl } from "@/lib/app-url";
 
 /** يبدأ تدفق OAuth لربط حساب Google (أدمن فقط). */
 export async function GET() {
@@ -22,7 +23,7 @@ export async function GET() {
     return NextResponse.redirect(url);
   } catch {
     return NextResponse.redirect(
-      new URL("/admin/settings?google=misconfigured", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+      new URL("/admin/settings?google=misconfigured", appUrl()),
     );
   }
 }

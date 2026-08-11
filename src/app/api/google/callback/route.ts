@@ -3,11 +3,12 @@ import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { oauthClient, GOOGLE_SETTING_KEY, GOOGLE_STATE_COOKIE } from "@/lib/google/client";
 import { setSetting } from "@/lib/settings";
+import { appUrl as resolveAppUrl } from "@/lib/app-url";
 
 /** يستقبل رمز OAuth، يبادله بالتوكنات، ويخزّن refresh token. */
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = resolveAppUrl();
   if (!user || user.userType !== "admin") {
     return NextResponse.redirect(new URL("/login", appUrl));
   }
