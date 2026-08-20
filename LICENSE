@@ -29,7 +29,8 @@ SOFTWARE.
 1. `db/seed/quran.json` و`db/seed/quran-layout.json` — نصّ المصحف وتخطيط أسطره،
    مصدرهما quran.com / مجمّع الملك فهد، ويخضعان لشروط أصحابهما.
 2. `src/fonts/*.woff2` — خطوط «ثمانية» (Thmanyah)، ملك أصحابها وتخضع لشروط
-   ترخيصها. إن لم تكن مرخّصاً لاستخدامها، استبدلها بخط آخر في `src/app/globals.css`.
+   ترخيصها. إن لم تكن مرخّصاً لاستخدامها، استبدلها من `src/lib/fonts.ts`
+   (تُعرَّف هناك بـ `next/font/local` وتُربط بمتغيّرَي `--font-sans` و`--font-display`).
 
 خطوط المصحف (QCF) لا تُوزَّع في هذا المستودع — تُجلب وقت التشغيل من quran.com
 عبر `/api/quran/font/[vpage]`.
@@ -41,7 +42,8 @@ The license above covers this repository's source code only. It does NOT cover:
    subject to their own terms.
 2. `src/fonts/*.woff2` — the Thmanyah typefaces, owned by their respective
    rights holders and subject to their own license. If you are not licensed to
-   use them, substitute another font in `src/app/globals.css`.
+   use them, swap them in `src/lib/fonts.ts` (declared there via
+   `next/font/local`, bound to the `--font-sans` / `--font-display` variables).
 
 QCF mushaf fonts are not redistributed here — they are fetched at runtime from
 quran.com via `/api/quran/font/[vpage]`.
