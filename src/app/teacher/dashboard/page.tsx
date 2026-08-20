@@ -109,7 +109,7 @@ export default async function TeacherDashboard() {
             {atRisk.map((s) => (
               <Link
                 key={s.id}
-                href={`/teacher/students/${s.id}`}
+                href={`/teacher/students/${s.code}`}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 transition-colors hover:border-warning/40"
               >
                 <span className="font-medium">{s.full_name}</span>

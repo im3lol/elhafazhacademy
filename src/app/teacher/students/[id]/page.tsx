@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { buttonClasses } from "@/components/ui/button";
 import { ProgressOverview, type ProgressReport } from "@/components/student/progress-overview";
 import { LessonsTable } from "@/components/student/lessons-table";
-import { isUuid } from "@/lib/utils";
+import { studentIdFromParam } from "@/lib/public-id";
 
 const catLabel: Record<string, string> = {
   memorization: "حفظ",
@@ -51,8 +51,9 @@ type Mistake = {
 type MistakeSummary = { open: string; resolved: string; repeated: string };
 
 export default async function TeacherStudentDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!isUuid(id)) notFound();
+  const { id: param } = await params;
+  const id = await studentIdFromParam(param);
+  if (!id) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 
@@ -96,10 +97,10 @@ export default async function TeacherStudentDetail({ params }: { params: Promise
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/teacher/students/${id}/progress`} className={buttonClasses({ size: "sm", variant: "outline" })}>
+          <Link href={`/teacher/students/${param}/progress`} className={buttonClasses({ size: "sm", variant: "outline" })}>
             التقدّم
           </Link>
-          <Link href={`/teacher/students/${id}/mushaf`} className={buttonClasses({ size: "sm" })}>
+          <Link href={`/teacher/students/${param}/mushaf`} className={buttonClasses({ size: "sm" })}>
             المصحف الشخصي
           </Link>
           <Link href="/teacher/students" className={buttonClasses({ size: "sm", variant: "outline" })}>
@@ -118,7 +119,7 @@ export default async function TeacherStudentDetail({ params }: { params: Promise
             {Number(mushaf?.open_notes ?? 0) > 0 && ` · ${ar(Number(mushaf!.open_notes))} ملاحظة مفتوحة`}
           </p>
         </div>
-        <Link href={`/teacher/students/${id}/mushaf`} className={buttonClasses({ size: "sm" })}>
+        <Link href={`/teacher/students/${param}/mushaf`} className={buttonClasses({ size: "sm" })}>
           فتح المصحف وتسجيل الملاحظات
         </Link>
       </Card>

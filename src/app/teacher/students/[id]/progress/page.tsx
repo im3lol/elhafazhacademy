@@ -5,11 +5,12 @@ import { getSessionUser } from "@/lib/auth/session";
 import { buttonClasses } from "@/components/ui/button";
 import { getStudentProgress } from "@/lib/student/progress";
 import { StudentProgressView } from "@/components/student/student-progress-view";
-import { isUuid } from "@/lib/utils";
+import { studentIdFromParam } from "@/lib/public-id";
 
 export default async function TeacherStudentProgressPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!isUuid(id)) notFound();
+  const { id: param } = await params;
+  const id = await studentIdFromParam(param);
+  if (!id) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 
@@ -30,7 +31,7 @@ export default async function TeacherStudentProgressPage({ params }: { params: P
             رحلة الطالب مع كتاب الله{student.current_level ? ` · المستوى: ${student.current_level}` : ""}.
           </p>
         </div>
-        <Link href={`/teacher/students/${id}`} className={buttonClasses({ size: "sm", variant: "outline" })}>
+        <Link href={`/teacher/students/${param}`} className={buttonClasses({ size: "sm", variant: "outline" })}>
           → ملف الطالب
         </Link>
       </div>

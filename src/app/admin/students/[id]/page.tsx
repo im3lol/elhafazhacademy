@@ -6,7 +6,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { ProgressOverview, type ProgressReport } from "@/components/student/progress-overview";
 import { LessonsTable } from "@/components/student/lessons-table";
 import { formatClassTime } from "@/lib/class-status";
-import { isUuid } from "@/lib/utils";
+import { studentIdFromParam } from "@/lib/public-id";
 
 const studentStatus: Record<string, { label: string; cls: string }> = {
   "Pending Payment": { label: "بانتظار الدفع", cls: "bg-warning/15 text-warning" },
@@ -33,6 +33,7 @@ function egp(v: string | number | null | undefined) {
 
 type Student = {
   id: string;
+  code: number;
   full_name: string;
   country: string | null;
   city: string | null;
@@ -70,11 +71,12 @@ type PaymentRow = { id: string; amount: string; currency: string; status: string
 type PaymentSum = { approved: string };
 
 export default async function AdminStudentDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!isUuid(id)) notFound();
+  const { id: param } = await params;
+  const id = await studentIdFromParam(param);
+  if (!id) notFound();
 
   const [student] = await sql<Student[]>`
-    select s.id, s.full_name, s.country, s.city, s.phone, s.whatsapp,
+    select s.id, s.code, s.full_name, s.country, s.city, s.phone, s.whatsapp,
            s.current_level, s.memorized_parts, s.status, s.created_at, s.teacher_id,
            t.full_name as teacher_name, p.name as package_name
     from students s
@@ -143,10 +145,13 @@ export default async function AdminStudentDetail({ params }: { params: Promise<{
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-3xl font-black">{student.full_name}</h1>
+          <span className="rounded-full bg-brand-subtle px-2.5 py-1 text-xs font-medium tabular-nums text-brand">
+            رقم {student.code}
+          </span>
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${st.cls}`}>{st.label}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/admin/students/${id}/progress`} className={buttonClasses({ size: "sm", variant: "outline" })}>
+          <Link href={`/admin/students/${param}/progress`} className={buttonClasses({ size: "sm", variant: "outline" })}>
             التقدّم
           </Link>
           <Link href="/admin/students" className={buttonClasses({ size: "sm", variant: "outline" })}>
@@ -197,7 +202,7 @@ export default async function AdminStudentDetail({ params }: { params: Promise<{
             {Number(mushaf?.open_notes ?? 0) > 0 && ` · ${ar(mushaf!.open_notes)} ملاحظة مفتوحة`}
           </p>
         </div>
-        <Link href={`/admin/students/${id}/mushaf`} className={buttonClasses({ size: "sm", variant: "outline" })}>
+        <Link href={`/admin/students/${param}/mushaf`} className={buttonClasses({ size: "sm", variant: "outline" })}>
           فتح مصحف الطالب
         </Link>
       </Card>

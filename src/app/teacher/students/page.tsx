@@ -7,7 +7,7 @@ export default async function TeacherStudentsPage() {
   const { profileId: teacherId } = await requireProfile("teacher");
 
   const students = await sql<StudentRow[]>`
-        select s.id, s.full_name, s.country, s.current_level, s.status, p.name as package_name,
+        select s.id, s.code, s.full_name, s.country, s.current_level, s.status, p.name as package_name,
                (select count(*) from classes c where c.student_id = s.id and c.status = 'completed')::int as classes_done,
                (select r.overall_score from lesson_reports r where r.student_id = s.id order by r.created_at desc limit 1) as last_overall
         from students s

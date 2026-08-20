@@ -20,6 +20,7 @@ const statusClass: Record<string, string> = {
 
 export type StudentRow = {
   id: string;
+  code: number;
   full_name: string;
   country: string | null;
   current_level: string | null;
@@ -44,6 +45,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
         <table className="w-full min-w-[820px] text-right text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted">
+              <th className="px-2 py-2 font-medium">الرقم</th>
               <th className="px-2 py-2 font-medium">الاسم</th>
               <th className="px-2 py-2 font-medium">الدولة</th>
               <th className="px-2 py-2 font-medium">المستوى</th>
@@ -58,9 +60,10 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
             {slice.map((s) => (
               <tr
                 key={s.id}
-                onClick={() => router.push(`/teacher/students/${s.id}`)}
+                onClick={() => router.push(`/teacher/students/${s.code}`)}
                 className="cursor-pointer border-b border-border hover:bg-surface"
               >
+                <td className="px-2 py-2 tabular-nums text-muted">{s.code}</td>
                 <td className="px-2 py-2 font-medium">{s.full_name}</td>
                 <td className="px-2 py-2">{s.country ?? "—"}</td>
                 <td className="px-2 py-2">{s.current_level ?? "—"}</td>
@@ -75,7 +78,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                 <td className="px-2 py-2">
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); router.push(`/teacher/students/${s.id}/mushaf`); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/teacher/students/${s.code}/mushaf`); }}
                     className={buttonClasses({ size: "sm", variant: "outline" })}
                   >
                     📖 فتح المصحف

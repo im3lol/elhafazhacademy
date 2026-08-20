@@ -1,10 +1,11 @@
 import { sql } from "@/lib/db";
 import { arNum } from "@/lib/utils";
 
-export type AtRiskStudent = { id: string; full_name: string; reasons: string[] };
+export type AtRiskStudent = { id: string; code: number; full_name: string; reasons: string[] };
 
 type Row = {
   id: string;
+  code: number;
   full_name: string;
   last_score: number | null;
   last_completed: string | null;
@@ -23,7 +24,7 @@ const NO_SHOWS = 2;
 /** يرصد طلاب المعلم النشطين الذين تظهر عليهم مؤشّرات تعثّر، مع أسباب كل حالة. */
 export async function getAtRiskStudents(userId: string): Promise<AtRiskStudent[]> {
   const rows = await sql<Row[]>`
-    select s.id, s.full_name,
+    select s.id, s.code, s.full_name,
       (select lr.overall_score from lesson_reports lr where lr.student_id = s.id order by lr.created_at desc limit 1) as last_score,
       (select max(c.start_time) from classes c where c.student_id = s.id and c.status = 'completed') as last_completed,
       (select count(*)::int from student_mushaf_mistakes m where m.student_id = s.id and not m.is_resolved) as open_notes,
@@ -45,7 +46,7 @@ export async function getAtRiskStudents(userId: string): Promise<AtRiskStudent[]
     }
     if (Number(r.open_notes) >= OPEN_NOTES) reasons.push(`${arNum(Number(r.open_notes))} ملاحظة مفتوحة`);
     if (Number(r.recent_no_shows) >= NO_SHOWS) reasons.push(`${arNum(Number(r.recent_no_shows))} غياب مؤخراً`);
-    if (reasons.length) out.push({ id: r.id, full_name: r.full_name, reasons });
+    if (reasons.length) out.push({ id: r.id, code: r.code, full_name: r.full_name, reasons });
   }
   return out;
 }

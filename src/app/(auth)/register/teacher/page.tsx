@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/input";
 import { Field, FormMessage } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { RoleTabs } from "@/components/auth/role-tabs";
 
 export default function TeacherRegisterPage() {
   const [state, formAction] = useActionState<ActionState, FormData>(
@@ -17,6 +18,7 @@ export default function TeacherRegisterPage() {
 
   return (
     <Card>
+      <RoleTabs active="teacher" />
       <h1 className="font-display text-2xl font-bold">التسجيل كمعلم</h1>
       <p className="mt-1 text-sm text-muted">
         انضم لفريق المعلمين. حسابك يُراجع قبل التفعيل.

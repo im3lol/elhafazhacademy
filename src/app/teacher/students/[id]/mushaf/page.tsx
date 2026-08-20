@@ -7,13 +7,14 @@ import { MushafPicker } from "@/components/mushaf/mushaf-picker";
 import { MushafMistakesList } from "@/components/mushaf/mushaf-manager";
 import { type MushafMistake, type MushafProgress } from "@/lib/mushaf/data";
 import { getMushafNav } from "@/lib/mushaf/nav";
-import { isUuid } from "@/lib/utils";
+import { studentIdFromParam } from "@/lib/public-id";
 
 type Student = { id: string; full_name: string };
 
 export default async function TeacherStudentMushafPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!isUuid(id)) notFound();
+  const { id: param } = await params;
+  const id = await studentIdFromParam(param);
+  if (!id) notFound();
   const user = await getSessionUser();
   if (!user || user.userType !== "teacher") redirect("/login");
 
@@ -43,7 +44,7 @@ export default async function TeacherStudentMushafPage({ params }: { params: Pro
           <h1 className="font-display text-3xl font-black">مصحف {student.full_name}</h1>
           <p className="mt-1 text-muted">اضغط على كلمة أو آية في المصحف لتعيين آخر موضع أو تسجيل خطأ هناك مباشرةً.</p>
         </div>
-        <Link href={`/teacher/students/${id}`} className={buttonClasses({ size: "sm", variant: "outline" })}>
+        <Link href={`/teacher/students/${param}`} className={buttonClasses({ size: "sm", variant: "outline" })}>
           → ملف الطالب
         </Link>
       </div>

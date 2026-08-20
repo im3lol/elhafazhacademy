@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth/guards";
 
 type Summary = { with_progress: number; open_notes: number; resolved_notes: number; students_with_notes: number };
 type ByType = { mistake_type: MistakeType; n: number };
-type TopStudent = { id: string; full_name: string; open_notes: number; page: number | null };
+type TopStudent = { id: string; code: number; full_name: string; open_notes: number; page: number | null };
 
 export default async function AdminMushafPage() {
   await requireAdmin("students.view");
@@ -23,11 +23,11 @@ export default async function AdminMushafPage() {
       select mistake_type, count(*)::int as n
       from student_mushaf_mistakes where not is_resolved group by mistake_type`,
     sql<TopStudent[]>`
-      select s.id, s.full_name, count(*)::int as open_notes,
+      select s.id, s.code, s.full_name, count(*)::int as open_notes,
         (select page_number from student_mushaf_progress p where p.student_id = s.id) as page
       from student_mushaf_mistakes m join students s on s.id = m.student_id
       where not m.is_resolved
-      group by s.id, s.full_name order by open_notes desc limit 15`,
+      group by s.id, s.code, s.full_name order by open_notes desc limit 15`,
   ]);
 
   const byTypeMap = new Map(byType.map((r) => [r.mistake_type, r.n]));
@@ -89,7 +89,7 @@ export default async function AdminMushafPage() {
                   <tr key={t.id} className="border-b border-border/60 transition-colors last:border-0 hover:bg-surface/60">
                     <td className="p-3 text-muted tabular-nums">{arNum(i + 1)}</td>
                     <td className="p-3 font-medium">
-                      <Link href={`/admin/students/${t.id}`} className="hover:text-brand hover:underline">
+                      <Link href={`/admin/students/${t.code}`} className="hover:text-brand hover:underline">
                         {t.full_name}
                       </Link>
                     </td>

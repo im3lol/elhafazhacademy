@@ -18,6 +18,7 @@ const statusLabel: Record<string, string> = {
 
 type Row = {
   id: string;
+  code: number;
   full_name: string;
   country: string | null;
   current_level: string | null;
@@ -34,7 +35,7 @@ export default async function AdminStudentsPage({
   const offset = (page - 1) * PAGE_SIZE;
   const [students, [{ total }], teachers, packages] = await Promise.all([
     sql<Row[]>`
-      select id, full_name, country, current_level, status
+      select id, code, full_name, country, current_level, status
       from students order by created_at desc limit ${PAGE_SIZE} offset ${offset}`,
     sql<{ total: number }[]>`select count(*)::int as total from students`,
     sql<{ id: string; label: string }[]>`
@@ -58,6 +59,7 @@ export default async function AdminStudentsPage({
         <table className="w-full text-right text-sm">
           <thead className="border-b border-border text-muted">
             <tr>
+              <th className="p-4 font-medium">الرقم</th>
               <th className="p-4 font-medium">الاسم</th>
               <th className="p-4 font-medium">الدولة</th>
               <th className="p-4 font-medium">المستوى</th>
@@ -67,8 +69,9 @@ export default async function AdminStudentsPage({
           <tbody>
             {students.map((s) => (
               <tr key={s.id} className="border-b border-border/60 transition-colors last:border-0 hover:bg-surface/60">
+                <td className="p-4 tabular-nums text-muted">{s.code}</td>
                 <td className="p-4 font-medium">
-                  <Link href={`/admin/students/${s.id}`} className="hover:text-brand hover:underline">
+                  <Link href={`/admin/students/${s.code}`} className="hover:text-brand hover:underline">
                     {s.full_name}
                   </Link>
                 </td>
@@ -79,7 +82,7 @@ export default async function AdminStudentsPage({
             ))}
             {students.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-6 text-center text-muted">لا يوجد طلاب بعد.</td>
+                <td colSpan={5} className="p-6 text-center text-muted">لا يوجد طلاب بعد.</td>
               </tr>
             )}
           </tbody>

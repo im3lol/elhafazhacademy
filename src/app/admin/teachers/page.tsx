@@ -18,6 +18,7 @@ const statusLabel: Record<string, string> = {
 
 type Row = {
   id: string;
+  code: number;
   full_name: string;
   country: string | null;
   qualifications: string | null;
@@ -40,7 +41,7 @@ export default async function AdminTeachersPage({
   const offset = (page - 1) * PAGE_SIZE;
   const [teachers, [{ total }]] = await Promise.all([
     sql<Row[]>`
-      select id, full_name, country, qualifications, experience_years, status, per_class_rate
+      select id, code, full_name, country, qualifications, experience_years, status, per_class_rate
       from teachers order by created_at desc limit ${PAGE_SIZE} offset ${offset}`,
     sql<{ total: number }[]>`select count(*)::int as total from teachers`,
   ]);
@@ -61,6 +62,7 @@ export default async function AdminTeachersPage({
           <table className="w-full min-w-[820px] text-right text-sm">
             <thead className="border-b border-border text-xs text-muted">
               <tr>
+                <th className="p-3 font-medium">الرقم</th>
                 <th className="p-3 font-medium">المعلم</th>
                 <th className="p-3 font-medium">الدولة</th>
                 <th className="p-3 font-medium">الخبرة</th>
@@ -75,6 +77,7 @@ export default async function AdminTeachersPage({
                 const active = t.status === "Active";
                 return (
                   <tr key={t.id} className="border-b border-border/60 align-top last:border-0">
+                    <td className="p-3 tabular-nums text-muted">{t.code}</td>
                     <td className="p-3">
                       <p className="font-medium">{t.full_name}</p>
                       {t.qualifications && (

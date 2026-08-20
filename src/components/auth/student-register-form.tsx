@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Field, FormMessage } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { RoleTabs } from "@/components/auth/role-tabs";
 
 type Package = { id: string; name: string; price: number; currency: string };
 
@@ -28,6 +29,7 @@ export function StudentRegisterForm({ packages }: { packages: Package[] }) {
 
   return (
     <Card>
+      <RoleTabs active="student" />
       <h1 className="font-display text-2xl font-bold">تسجيل طالب جديد</h1>
       <p className="mt-1 text-sm text-muted">
         ابدأ رحلتك في حفظ كتاب الله مع متابعة دقيقة.
