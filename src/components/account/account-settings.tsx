@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { updateProfile, changePassword, type AccountState } from "@/lib/account/actions";
+import { updateProfile, changePassword, changeEmail, type AccountState } from "@/lib/account/actions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FormMessage } from "@/components/ui/field";
@@ -14,6 +14,7 @@ export function AccountSettings({
 }) {
   const [p, profileAction] = useActionState<AccountState, FormData>(updateProfile, {});
   const [pw, pwAction] = useActionState<AccountState, FormData>(changePassword, {});
+  const [em, emailAction] = useActionState<AccountState, FormData>(changeEmail, {});
 
   return (
     <div className="space-y-6">
@@ -23,9 +24,6 @@ export function AccountSettings({
           {p.error && <FormMessage>{p.error}</FormMessage>}
           {p.success && <FormMessage type="success">{p.success}</FormMessage>}
 
-          <Field label="البريد الإلكتروني">
-            <Input value={profile.email} dir="ltr" disabled />
-          </Field>
           <Field label="الاسم الكامل" htmlFor="full_name" error={p.fieldErrors?.full_name} required>
             <Input id="full_name" name="full_name" defaultValue={profile.full_name} />
           </Field>
@@ -38,6 +36,34 @@ export function AccountSettings({
             </Field>
           </div>
           <SubmitButton size="sm" pendingText="جارٍ الحفظ…">حفظ البيانات</SubmitButton>
+        </form>
+      </Card>
+
+      <Card className="space-y-4">
+        <h2 className="font-display text-lg font-bold">البريد الإلكتروني</h2>
+        <p className="text-sm text-muted">
+          بريدك الحالي: <span dir="ltr" className="font-medium text-foreground">{profile.email}</span>
+          {" "}— وهو الذي تسجّل به الدخول.
+        </p>
+        <form action={emailAction} className="space-y-4">
+          {em.error && <FormMessage>{em.error}</FormMessage>}
+          {em.success && <FormMessage type="success">{em.success}</FormMessage>}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="البريد الجديد" htmlFor="new_email" error={em.fieldErrors?.new_email} required>
+              <Input id="new_email" name="new_email" type="email" dir="ltr" placeholder="you@example.com" autoComplete="email" />
+            </Field>
+            <Field
+              label="كلمة المرور الحالية"
+              htmlFor="email_current_password"
+              error={em.fieldErrors?.current_password}
+              hint="للتأكّد أنك صاحب الحساب"
+              required
+            >
+              <Input id="email_current_password" name="current_password" type="password" autoComplete="current-password" />
+            </Field>
+          </div>
+          <SubmitButton size="sm" pendingText="جارٍ التغيير…">تغيير البريد</SubmitButton>
         </form>
       </Card>
 

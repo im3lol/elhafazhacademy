@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getTelegramConfig, sendTelegram } from "@/lib/telegram/client";
+import { getBranding } from "@/lib/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   const chatId = msg?.chat?.id;
 
   if (chatId && text.startsWith("/start")) {
+    const { branding } = await getBranding();
     const code = text.split(/\s+/)[1] ?? "";
     if (code) {
       const [u] = await sql<{ id: string }[]>`
@@ -30,10 +32,15 @@ export async function POST(req: Request) {
         returning id`;
       await sendTelegram(
         String(chatId),
-        u ? "✅ تم ربط حسابك بأكاديمية الحفظة. ستصلك الإشعارات هنا." : "رمز ربط غير صالح أو منتهٍ. أنشئ رمزاً جديداً من حسابك.",
+        u
+          ? `✅ تم ربط حسابك بـ${branding.fullName}. ستصلك الإشعارات هنا.`
+          : "رمز ربط غير صالح أو منتهٍ. أنشئ رمزاً جديداً من حسابك.",
       );
     } else {
-      await sendTelegram(String(chatId), "أهلاً بك في أكاديمية الحفظة 👋 لربط حسابك، استخدم زر الربط من صفحة الإشعارات في حسابك.");
+      await sendTelegram(
+        String(chatId),
+        `أهلاً بك في ${branding.fullName} 👋 لربط حسابك، استخدم زر الربط من صفحة الإشعارات في حسابك.`,
+      );
     }
   }
 

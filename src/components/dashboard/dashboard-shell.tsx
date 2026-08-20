@@ -132,6 +132,9 @@ const navByRole: Record<string, { title: string; groups: NavGroup[] }> = {
           { href: "/admin/notifications", label: "الإشعارات", icon: IconBell },
           { href: "/admin/branding", label: "الهوية والمحتوى", icon: IconSliders },
           { href: "/admin/settings", label: "الإعدادات", icon: IconSettings },
+          // منفصلة عن «الإعدادات»: تلك تحتاج صلاحية settings.manage، وتغيير
+          // كلمة مرور المرء لا يصحّ أن يتوقّف عليها.
+          { href: "/admin/account", label: "حسابي", icon: IconUsers },
         ],
       },
     ],

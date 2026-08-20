@@ -2,9 +2,10 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
-import { sql } from "@/lib/db";
+import { sql, isDbUnavailable } from "@/lib/db";
 import { sendEmail } from "@/lib/email/client";
 import { appUrl } from "@/lib/app-url";
+import { getBranding } from "@/lib/branding";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, homeForType } from "@/lib/auth/session";
 import { checkThrottle, recordFailure, clearThrottle } from "@/lib/auth/throttle";
@@ -29,6 +30,12 @@ function flattenErrors(issues: readonly { path: PropertyKey[]; message: string }
   }
   return fieldErrors;
 }
+
+/**
+ * بين نشر النسخة وربط قاعدتها، هذه الإجراءات هي أول ما يلمسه صاحب الأكاديمية.
+ * بلا هذه الرسالة كان تسجيل الدخول ينهار بخطأ خام لا يدلّ على الخطوة الناقصة.
+ */
+const DB_DOWN = "قاعدة البيانات غير مربوطة بعد. افتح صفحة /setup لمعرفة الخطوات المتبقية.";
 
 function isUniqueViolation(e: unknown) {
   return typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "23505";
@@ -69,6 +76,7 @@ export async function registerStudent(
     });
   } catch (e) {
     if (isUniqueViolation(e)) return { error: "هذا البريد مسجّل بالفعل" };
+    if (isDbUnavailable(e)) return { error: DB_DOWN };
     return { error: "تعذّر إنشاء الحساب" };
   }
 
@@ -106,6 +114,7 @@ export async function registerTeacher(
     });
   } catch (e) {
     if (isUniqueViolation(e)) return { error: "هذا البريد مسجّل بالفعل" };
+    if (isDbUnavailable(e)) return { error: DB_DOWN };
     return { error: "تعذّر إنشاء الحساب" };
   }
 
@@ -124,7 +133,13 @@ export async function login(
   }
   const email = parsed.data.email;
 
-  const throttle = await checkThrottle(email);
+  let throttle: { locked: boolean; minutes: number };
+  try {
+    throttle = await checkThrottle(email);
+  } catch (e) {
+    if (isDbUnavailable(e)) return { error: DB_DOWN };
+    throw e;
+  }
   if (throttle.locked) {
     return { error: `تم تجاوز عدد المحاولات المسموح. حاول بعد ${throttle.minutes.toLocaleString("ar-EG")} دقيقة.` };
   }
@@ -169,7 +184,13 @@ export async function forgotPassword(
   // حدّ للطلبات: بدونه يصلح هذا المسار لإغراق أي بريد برسائل باسم الأكاديمية.
   // مفتاح منفصل عن تقييد الدخول كي لا يقفل أحدهما الآخر.
   const throttleKey = `reset:${parsed.data.email}`;
-  if ((await checkThrottle(throttleKey)).locked) return generic;
+  try {
+    if ((await checkThrottle(throttleKey)).locked) return generic;
+  } catch (e) {
+    // الرسالة العامة هنا كذب: لا رسالة سترسَل ولا قاعدة تُقرأ
+    if (isDbUnavailable(e)) return { error: DB_DOWN };
+    throw e;
+  }
   await recordFailure(throttleKey);
 
   const [user] = await sql<{ id: string }[]>`select id from users where email = ${parsed.data.email} limit 1`;
@@ -184,9 +205,10 @@ export async function forgotPassword(
 
   const base = appUrl();
   const link = `${base}/reset-password?token=${token}`;
+  const { branding } = await getBranding();
   await sendEmail(
     parsed.data.email,
-    "إعادة تعيين كلمة المرور — أكاديمية الحفظة",
+    `إعادة تعيين كلمة المرور — ${branding.fullName}`,
     `<div dir="rtl" style="font-family:sans-serif">
       <h2>إعادة تعيين كلمة المرور</h2>
       <p>اضغط الرابط التالي لتعيين كلمة مرور جديدة (صالح لمدة ساعة):</p>
@@ -206,9 +228,15 @@ export async function resetPassword(_prev: ActionState, formData: FormData): Pro
   if (next !== confirm) return { fieldErrors: { confirm_password: "كلمتا المرور غير متطابقتين" } };
 
   const hashed = hashToken(token);
-  const [row] = await sql<{ user_id: string }[]>`
-    select user_id from password_resets
-    where token = ${hashed} and used = false and expires_at > now() limit 1`;
+  let row: { user_id: string } | undefined;
+  try {
+    [row] = await sql<{ user_id: string }[]>`
+      select user_id from password_resets
+      where token = ${hashed} and used = false and expires_at > now() limit 1`;
+  } catch (e) {
+    if (isDbUnavailable(e)) return { error: DB_DOWN };
+    throw e;
+  }
   if (!row) return { error: "الرابط غير صالح أو منتهي الصلاحية. اطلب رابطاً جديداً." };
 
   const passwordHash = await hashPassword(next);

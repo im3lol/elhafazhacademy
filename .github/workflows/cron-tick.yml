@@ -4,6 +4,13 @@ name: المهمة الدورية للحصص
 # الحصص (تُرسل قبل الموعد بـ ١٥ دقيقة). هذا الجدول يستدعي نفس المسار كل
 # ٥ دقائق. ملاحظة: جدولة GitHub قد تتأخر بضع دقائق تحت الحمل — عند
 # الترقية إلى Vercel Pro استبدلها بـ crons في vercel.json.
+#
+# في نسخة منسوخة (fork) اضبط أولاً:
+#   Settings → Secrets and variables → Actions
+#     • Variables → APP_URL   = https://<نطاق-أكاديميتك>
+#     • Secrets   → CRON_SECRET = نفس قيمة CRON_SECRET في Vercel
+#   وفعّل Actions من تبويب Actions (GitHub يعطّل الجداول في الـ forks افتراضياً،
+#   ويعطّلها ثانيةً بعد ٦٠ يوماً بلا نشاط على المستودع).
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -14,13 +21,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: استدعاء /api/cron/tick
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          # لا عنوان افتراضي هنا عمداً: القيمة الثابتة كانت تجعل كل نسخة منسوخة
+          # تستدعي أكاديمية صاحب المستودع الأصلي، وتذكيرات النسخة لا تعمل بصمت.
+          if [ -z "$APP_URL" ]; then
+            echo "✖ المتغيّر APP_URL غير مضبوط."
+            echo "  اضبطه من: Settings → Secrets and variables → Actions → Variables"
+            echo "  القيمة: عنوان أكاديميتك، مثل https://my-academy.vercel.app (بلا / في آخره)"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "✖ السرّ CRON_SECRET غير مضبوط."
+            echo "  اضبطه من: Settings → Secrets and variables → Actions → Secrets"
+            echo "  القيمة: نفس CRON_SECRET المضبوط في متغيّرات مشروعك على Vercel"
+            exit 1
+          fi
+
           code=$(curl -s -o /tmp/out.json -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ vars.APP_URL || 'https://elhafazah-academy.vercel.app' }}/api/cron/tick")
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${APP_URL%/}/api/cron/tick")
           cat /tmp/out.json
           echo ""
           if [ "$code" != "200" ]; then
             echo "فشلت الدورة برمز $code"
+            [ "$code" = "401" ] && echo "٤٠١ يعني أن CRON_SECRET هنا لا يطابق المضبوط في Vercel."
             exit 1
           fi

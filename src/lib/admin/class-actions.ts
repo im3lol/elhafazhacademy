@@ -9,6 +9,7 @@ import { formatClassTime, parseAcademyLocal, ACADEMY_TZ } from "@/lib/class-stat
 import { logAudit } from "@/lib/audit";
 import { activeSubscription } from "@/lib/finance/subscriptions";
 import { requirePermission } from "@/lib/auth/guards";
+import { getBranding } from "@/lib/branding";
 
 export type ClassState = {
   error?: string;
@@ -53,8 +54,9 @@ export async function scheduleClass(_prev: ClassState, formData: FormData): Prom
   let googleEventId: string | null = null;
   if (!meetLink) {
     try {
+      const { branding } = await getBranding();
       const ev = await createMeetEvent({
-        summary: "حصة قرآن — أكاديمية الحفظة",
+        summary: `حصة قرآن — ${branding.fullName}`,
         startISO: start.toISOString(),
         endISO: end.toISOString(),
         timeZone: ACADEMY_TZ,

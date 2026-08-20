@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:db": "vitest run --config vitest.integration.config.ts",
     "setup": "node scripts/setup.mjs",
     "seed:quran": "node scripts/seed-quran.mjs",
     "fetch:quran": "node scripts/fetch-quran.mjs",

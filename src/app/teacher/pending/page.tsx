@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
+import { getBranding } from "@/lib/branding";
 
-export default function TeacherPendingPage() {
+export default async function TeacherPendingPage() {
+  const { branding } = await getBranding();
   return (
     <div className="mx-auto max-w-xl">
       <Card className="space-y-3 text-center">
@@ -9,7 +11,7 @@ export default function TeacherPendingPage() {
         </div>
         <h1 className="font-display text-2xl font-bold">طلبك قيد المراجعة</h1>
         <p className="text-muted">
-          شكراً لتسجيلك كمعلم في أكاديمية الحفظة. يقوم فريق الإدارة بمراجعة بياناتك،
+          شكراً لتسجيلك كمعلم في {branding.fullName}. يقوم فريق الإدارة بمراجعة بياناتك،
           وسنخطرك فور اعتماد حسابك.
         </p>
       </Card>

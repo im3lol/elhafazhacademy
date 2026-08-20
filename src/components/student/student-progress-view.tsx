@@ -3,11 +3,13 @@ import { BarChart } from "@/components/admin/dashboard-charts";
 import { PrintButton } from "@/components/student/print-button";
 import type { StudentProgress } from "@/lib/student/progress";
 import { arNum } from "@/lib/utils";
+import { getBranding } from "@/lib/branding";
 
 const arDate = (s: string) => new Date(s).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" });
 
 /** عرض تقدّم الطالب (خريطة الحفظ + النشاط/التقييم الشهري + الإنجازات) — قابل لإعادة الاستخدام للطالب/المعلم/الأدمن. */
-export function StudentProgressView({ data, studentName }: { data: StudentProgress; studentName?: string }) {
+export async function StudentProgressView({ data, studentName }: { data: StudentProgress; studentName?: string }) {
+  const { branding } = await getBranding();
   const kpis = [
     { label: "الأجزاء المحفوظة", value: `${arNum(data.memorized)} / ٣٠`, color: "text-gold" },
     { label: "إجمالي الحصص", value: arNum(data.totalLessons), color: "text-brand" },
@@ -24,7 +26,7 @@ export function StudentProgressView({ data, studentName }: { data: StudentProgre
       {/* ترويسة تظهر في النسخة المطبوعة فقط */}
       <div className="hidden print:block">
         <div className="flex items-center justify-between border-b-2 border-brand pb-2">
-          <span className="font-display text-xl font-black text-brand">أكاديمية الحفظة</span>
+          <span className="font-display text-xl font-black text-brand">{branding.fullName}</span>
           <span className="text-sm">تقرير التقدّم{studentName ? ` — ${studentName}` : ""}</span>
         </div>
         <p className="mt-1 text-xs text-muted">

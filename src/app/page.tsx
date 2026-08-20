@@ -124,7 +124,7 @@ export default async function Home() {
           </div>
 
           {/* بطاقة معاينة لوحة التحكم */}
-          <HeroPreview />
+          <HeroPreview logo={branding.logo} />
         </section>
 
         {/* ===== Stats band ===== */}
@@ -416,7 +416,7 @@ function FooterCol({ title, links }: { title: string; links: string[] }) {
   );
 }
 
-function HeroPreview() {
+function HeroPreview({ logo }: { logo: string }) {
   return (
     <div className="rounded-3xl border border-border bg-surface p-6 shadow-xl">
       <div className="flex items-center justify-between">
@@ -424,7 +424,7 @@ function HeroPreview() {
           <p className="font-display text-lg font-bold">مرحباً، محمد</p>
           <p className="text-sm text-muted">استمر في التقدّم 👋</p>
         </div>
-        <LogoMark className="h-10 w-10" />
+        <LogoMark className="h-10 w-10" logo={logo} />
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
         <MiniStat label="نسبة الحفظ" value="٧٥٪" accent />

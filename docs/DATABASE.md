@@ -16,10 +16,10 @@ docker exec -it elhafazah_db psql -U postgres -d elhafazah
 
 ## Supabase (الإنتاج)
 
-مشروع `elhafazah-academy` — المنطقة `eu-central-1` — <https://ifysybvpkliwsrahlefh.supabase.co>
+كل أكاديمية لها مشروع Supabase خاصّ بها — لا قاعدة مشتركة بين النسخ.
 
-المخطط الكامل (٣٤ جدولاً + الأدوار والصلاحيات والباقات وقوالب الإشعارات) مطبَّق هناك عبر migrations.
-التطبيق يتصل بـ `postgres.js` مباشرةً — لا يستخدم مكتبة Supabase ولا مصادقتها — فالربط **تغيير سلسلة اتصال فقط**:
+المخطط الكامل (٣٥ جدولاً + الأدوار والصلاحيات والباقات وقوالب الإشعارات) يطبّقه
+`npm run setup` تلقائياً وقت البناء. التطبيق يتصل بـ `postgres.js` مباشرةً — لا يستخدم مكتبة Supabase ولا مصادقتها — فالربط **تغيير سلسلة اتصال فقط**:
 
 1. من لوحة Supabase: **Connect ← Transaction pooler** وانسخ السلسلة (المنفذ `6543`).
 2. ضَع كلمة مرور القاعدة مكان `[YOUR-PASSWORD]` واضبط `DATABASE_URL` في بيئة الاستضافة.
@@ -47,6 +47,10 @@ Supabase يفتح واجهة REST على schema `public` لأي شخص يملك 
 البيانات فيها. فتُهيَّأ نسخة كل أكاديمية تلقائياً عند أول نشر — راجع
 [HANDOVER.md](HANDOVER.md).
 
+`01_schema.sql` وحده محروس بشرط القاعدة الفارغة (فيه `create table` بلا
+`if not exists`). أمّا `02`→`05` فتُطبَّق **على كل نشرة**، لأنها القناة الوحيدة التي
+تصل بها التحديثات إلى نسخة منشورة عند أي جهة.
+
 يقرأ السكربت `DATABASE_URL` أو `POSTGRES_URL` أو `POSTGRES_URL_NON_POOLING`
 (الأخيران يحقنهما تكامل Supabase على Vercel)، ويفضّل الاتصال المباشر للـ DDL.
 
@@ -54,22 +58,53 @@ Supabase يفتح واجهة REST على schema `public` لأي شخص يملك 
 
 | الملف | المحتوى |
 |---|---|
-| `01_schema.sql` | كل الجداول (٣٤) + الفهارس + triggers |
+| `01_schema.sql` | كل الجداول (٣٥) + الفهارس + triggers — **على قاعدة فارغة فقط** |
 | `02_seed.sql` | الأدوار، الصلاحيات، الباقات الافتراضية، قوالب الإشعارات |
 | `03_app_settings.sql` | إعدادات التطبيق الأساسية |
-| `04_constraints.sql` | قيود وفهارس أُضيفت بعد الإصدار الأول |
+| `04_constraints.sql` | **قناة الترحيل**: كل تغيير على المخطط بعد الإصدار الأول |
 | `05_indexes.sql` | فهارس أداء + قيد الاشتراك النشط الواحد |
 
 > أعدت التهيئة من الصفر: `docker compose down -v && docker compose up -d`.
 
-**على قاعدة قائمة** (لا يُعاد تشغيل `db/init` إلا على volume فارغ) طبّق الملفات المضافة يدوياً — كلها idempotent:
+**على قاعدة قائمة** (لا يُعاد تشغيل `db/init` إلا على volume فارغ) يكفي `npm run setup` —
+يطبّق `02`→`05` دائماً. أو يدوياً:
 
 ```bash
 docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/04_constraints.sql
 docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/05_indexes.sql
 ```
 
-## الجداول (٣٤)
+### كيف أضيف تغييراً على المخطط
+
+المنصّة تعمل نسخاً مستقلّة عند جهات مختلفة، كلٌّ على قاعدتها. **لا تعدّل
+`01_schema.sql` وحدها** — فهي لا تُطبَّق إلا على قاعدة فارغة، فالتغيير يصل للتنصيبات
+الجديدة فقط ويكسر كل نسخة قائمة تسحب الكود الجديد.
+
+القاعدة: **`01_schema.sql` للتنصيب الجديد، و`04_constraints.sql` قناة الترحيل.**
+
+| التغيير | أين | الصيغة |
+|---|---|---|
+| عمود جديد | `04_constraints.sql` | `alter table t add column if not exists c type;` |
+| جدول جديد | `04_constraints.sql` | `create table if not exists t (...);` |
+| تعديل قيد | `04_constraints.sql` | `alter table t drop constraint if exists k;` ثم `add constraint k ...` |
+| فهرس | `05_indexes.sql` | `create index if not exists ...` |
+| صلاحية/قالب إشعار | `02_seed.sql` | `insert ... on conflict (key) do nothing` |
+
+**كل جملة تُضاف يجب أن تحتمل التكرار** — تُنفَّذ على كل نشرة عند كل جهة. وأضِف
+التغيير إلى `01_schema.sql` كذلك كي تبدأ القواعد الجديدة كاملة من أول مرّة.
+
+للتحقّق قبل الدفع — شغّل التهيئة مرّتين على قاعدة نظيفة وقارن العدّ:
+
+```bash
+docker run -d --name pg_test -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres   -e POSTGRES_DB=elhafazah -p 5434:5432 postgres:17-alpine
+export DATABASE_URL="postgres://postgres:postgres@localhost:5434/elhafazah"
+node scripts/setup.mjs && node scripts/setup.mjs
+docker exec pg_test psql -U postgres -d elhafazah -c   "select (select count(*) from packages) pkgs, (select count(*) from permissions) perms;"
+# المتوقّع: pkgs=3 perms=21 — أي تضاعف يعني أن جملةً ما ليست idempotent
+docker rm -f pg_test
+```
+
+## الجداول (٣٥)
 
 | المجال | الجداول |
 |---|---|
@@ -80,6 +115,7 @@ docker exec -i elhafazah_db psql -U postgres -d elhafazah < db/init/05_indexes.s
 | الطلبات | `package_change_requests` · `student_teacher_requests` |
 | الدعم والإشعارات | `complaints` · `complaint_messages` · `notifications` · `notification_templates` |
 | الأمان | `audit_logs` · `password_resets` · `login_throttle` |
+| الإعدادات | `app_settings` (مفاتيح التكاملات والهوية والمحتوى) |
 | المصحف | `quran_surahs` · `quran_ayahs` · `quran_words` · `reciters` · `student_mushaf_progress` · `student_mushaf_mistakes` · `student_mushaf_bookmarks` · `student_achievements` |
 
 ## البذور

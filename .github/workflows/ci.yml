@@ -1,0 +1,39 @@
+name: الفحص الآلي
+
+# فحص كل دفعة وكل طلب دمج: lint + أنواع + اختبارات الوحدة + بناء كامل.
+# لا قاعدة بيانات هنا: scripts/setup.mjs يتخطّى نفسه بلا سلسلة اتصال،
+# و`next build` يمرّ لأن كل الصفحات التي تمسّ القاعدة ديناميكية.
+# اختبارات التكامل (npm run test:db) تحتاج TEST_DATABASE_URL ولا تعمل في CI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: تثبيت الاعتماديات
+        run: npm ci
+
+      - name: فحص الأسلوب (ESLint)
+        run: npm run lint
+
+      - name: فحص الأنواع (TypeScript)
+        run: npx tsc --noEmit
+
+      - name: اختبارات الوحدة
+        run: npm test
+
+      - name: بناء المشروع
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-build-only-secret-not-used-at-runtime-32

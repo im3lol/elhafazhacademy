@@ -37,7 +37,8 @@ services:
     ports:
       - "${APP_PORT:-8080}:3000"
 
-  # بذر بيانات القرآن + حساب الأدمن (يُشغَّل مرّة واحدة عند الحاجة)
+  # بذر بيانات القرآن + حسابَي العرض (يُشغَّل مرّة واحدة عند الحاجة)
+  # حساب الأدمن ليس هنا: مساره صفحة /setup في المتصفح بعد أول تشغيل.
   # التشغيل: docker compose --profile seed run --rm seed
   seed:
     build:
@@ -49,7 +50,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/elhafazah}
-    command: sh -c "node scripts/seed-quran.mjs && node scripts/seed-quran-layout.mjs && node scripts/seed-admin.mjs && node scripts/seed-demo.mjs"
+    command: sh -c "node scripts/seed-quran.mjs && node scripts/seed-quran-layout.mjs && node scripts/seed-demo.mjs"
 
 volumes:
   elhafazah_pgdata:

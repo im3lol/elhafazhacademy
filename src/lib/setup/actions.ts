@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { sql } from "@/lib/db";
+import { sql, hasDbUrl, isDbUnavailable } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import type { ActionState } from "@/lib/auth/actions";
@@ -22,15 +22,24 @@ const schema = z
     message: "كلمتا المرور غير متطابقتين",
   });
 
-/** هل القاعدة مهيّأة وبلا أي أدمن؟ تُستخدم لفتح/إغلاق صفحة التركيب. */
-export async function setupState(): Promise<"ready" | "done" | "no-schema"> {
+/**
+ * حالة التهيئة. `no-db` و`no-schema` مفصولتان لأن علاجهما مختلف:
+ * الأولى تعني «اربط قاعدة»، والثانية «أعد النشر ليعمل البناء».
+ */
+export async function setupState(): Promise<"ready" | "done" | "no-schema" | "no-db"> {
+  if (!hasDbUrl()) return "no-db";
   try {
     const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from admin_users`;
     return n === 0 ? "ready" : "done";
-  } catch {
-    // الجدول غير موجود ⇒ سكربت التهيئة لم يعمل بعد
-    return "no-schema";
+  } catch (e) {
+    // جدول غير موجود ⇒ البناء لم يهيّئ المخطط. تعذّر الاتصال ⇒ السلسلة مضبوطة
+    // لكن القاعدة لا تستجيب (كلمة مرور خاطئة، مشروع موقوف، شبكة).
+    return isDbUnavailable(e) && !isMissingTable(e) ? "no-db" : "no-schema";
   }
+}
+
+function isMissingTable(e: unknown) {
+  return typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "42P01";
 }
 
 /** إنشاء أول حساب أدمن. متاح مرة واحدة فقط — على قاعدة بلا أدمن. */

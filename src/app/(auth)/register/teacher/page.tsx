@@ -19,7 +19,7 @@ export default function TeacherRegisterPage() {
     <Card>
       <h1 className="font-display text-2xl font-bold">التسجيل كمعلم</h1>
       <p className="mt-1 text-sm text-muted">
-        انضم لفريق معلمي أكاديمية الحفظة. حسابك يُراجع قبل التفعيل.
+        انضم لفريق المعلمين. حسابك يُراجع قبل التفعيل.
       </p>
 
       <form action={formAction} className="mt-6 space-y-4">

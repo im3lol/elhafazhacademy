@@ -41,16 +41,24 @@ select r.id, p.id from roles r join permissions p on p.key = any (array[
 where r.name = 'teacher_supervisor'
 on conflict do nothing;
 
-insert into packages (name, description, classes_per_month, hours_per_month, price, currency, duration_days, type, is_active) values
+-- باقات افتراضية لقاعدة جديدة فقط.
+-- كان هنا `on conflict do nothing` بلا أثر: لا قيد فريد على packages.name، فالتعارض
+-- الوحيد الممكن هو المفتاح الأساسي (uuid عشوائي لا يتكرّر). ولأن هذا الملف صار
+-- يُطبَّق على كل نشرة (كي تصل الصلاحيات والقوالب الجديدة للنسخ القائمة)، كان ذلك
+-- يضاعف الباقات في كل مرّة. الشرط أدناه يعبّر عن المقصود: لا تلمس أكاديمية
+-- عدّلت باقاتها، واملأ الجدول الفارغ وحده.
+insert into packages (name, description, classes_per_month, hours_per_month, price, currency, duration_days, type, is_active)
+select * from (values
   ('الباقة الأساسية','٨ حصص شهرياً — مناسبة للمبتدئين',8,8,450,'EGP',30,'basic',true),
   ('الباقة المتوسطة','١٢ حصة شهرياً — توازن الحفظ والمراجعة',12,12,650,'EGP',30,'standard',true),
   ('الباقة المكثفة','٢٠ حصة شهرياً — للحفظ السريع',20,20,950,'EGP',30,'intensive',true)
-on conflict do nothing;
+) as v(name, description, classes_per_month, hours_per_month, price, currency, duration_days, type, is_active)
+where not exists (select 1 from packages);
 
 insert into notification_templates (key, channel, title_ar, body_ar) values
   ('account_created','app','تم إنشاء حسابك','مرحباً {{name}}، تم إنشاء حسابك بنجاح. بانتظار رفع إثبات الدفع.'),
   ('payment_received','app','تم استلام إثبات الدفع','استلمنا إثبات دفعك وهو قيد المراجعة.'),
-  ('payment_approved','whatsapp','تم تفعيل حسابك','تم تفعيل حسابك في أكاديمية الحفظة.'),
+  ('payment_approved','whatsapp','تم تفعيل حسابك','تم تفعيل حسابك بنجاح.'),
   ('payment_rejected','whatsapp','تم رفض إثبات الدفع','تعذّر قبول إثبات الدفع. السبب: {{reason}}.'),
   ('class_reminder_5min','whatsapp','حصتك تبدأ قريباً','تبدأ حصتك بعد ٥ دقائق. رابط الدخول: {{meet_link}}'),
   ('package_changed','app','تم تغيير باقتك','تم تطبيق تغيير الباقة الخاص بك بنجاح.'),

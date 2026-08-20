@@ -15,7 +15,7 @@ export default function LoginPage() {
     <Card>
       <h1 className="font-display text-2xl font-bold">تسجيل الدخول</h1>
       <p className="mt-1 text-sm text-muted">
-        أهلاً بعودتك إلى أكاديمية الحفظة.
+        أهلاً بعودتك.
       </p>
 
       <form action={formAction} className="mt-6 space-y-4">

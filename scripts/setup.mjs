@@ -29,15 +29,16 @@ try {
   if (ready) {
     console.log("ℹ️ المخطط موجود — تخطّي الإنشاء.");
   } else {
-    // 01_schema.sql فيه `create table` بلا `if not exists` — لا يُطبَّق إلا على قاعدة فارغة
-    for (const f of ["01_schema.sql", "02_seed.sql", "03_app_settings.sql"]) {
-      await apply(f);
-      console.log(`✅ ${f}`);
-    }
+    // 01_schema.sql وحده فيه `create table` بلا `if not exists` — لا يُطبَّق إلا على قاعدة فارغة
+    await apply("01_schema.sql");
+    console.log("✅ 01_schema.sql");
   }
 
-  // هذان idempotent — يُطبَّقان دائماً كي تلحق القواعد القائمة أي إضافات لاحقة
-  for (const f of ["04_constraints.sql", "05_indexes.sql"]) {
+  // البقية idempotent وتُطبَّق دائماً — وهذا شرط وصول التحديثات إلى النسخ المنشورة:
+  // كل جهة تشغّل نسختها على قاعدتها، فصلاحية أو قالب إشعار أو عمود يُضاف لاحقاً
+  // لن يصل إليها إلا عبر هذه الحلقة. أي جملة تُضاف لهذه الملفات يجب أن تحتمل
+  // التكرار (`if not exists` / `on conflict` / `where not exists`).
+  for (const f of ["02_seed.sql", "03_app_settings.sql", "04_constraints.sql", "05_indexes.sql"]) {
     await apply(f);
     console.log(`✅ ${f}`);
   }

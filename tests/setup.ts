@@ -15,5 +15,21 @@ try {
     if (!process.env[key]) process.env[key] = value;
   }
 } catch {
-  // لا يوجد .env.local — اختبارات الوحدة البحتة ستعمل، واختبارات DB ستُتخطّى
+  // لا يوجد .env.local — اختبارات الوحدة البحتة ستعمل
+}
+
+/**
+ * حاجز أمان: اختبارات التكامل تُنشئ وتحذف صفوفاً حقيقية (vitest-*@test.local).
+ * `.env.local` يشير إلى قاعدة الإنتاج، فتوريثها هنا يعني كتابة اختبارات في الإنتاج.
+ * لذلك تُقطع الوراثة دائماً: قاعدة الاختبارات تأتي حصراً من TEST_DATABASE_URL.
+ */
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "";
+delete process.env.POSTGRES_URL;
+delete process.env.POSTGRES_URL_NON_POOLING;
+
+if (!process.env.TEST_DATABASE_URL) {
+  console.warn(
+    "⚠️ TEST_DATABASE_URL غير مضبوط — اختبارات التكامل ستفشل بخطأ اتصال (وهذا مقصود).\n" +
+      "   شغّل اختبارات الوحدة بـ `npm test`، أو اضبط TEST_DATABASE_URL على قاعدة محلية لـ `npm run test:db`.",
+  );
 }

@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { materializeRecurringSlots } from "@/lib/booking/recurring";
 import { activeSubscription } from "@/lib/finance/subscriptions";
 import { currentTeacherId } from "@/lib/auth/guards";
+import { getBranding } from "@/lib/branding";
 
 export type BookingState = { error?: string; success?: string };
 
@@ -139,8 +140,9 @@ export async function bookSlot(_prev: BookingState, formData: FormData): Promise
   let meetLink: string | null = null;
   let googleEventId: string | null = null;
   try {
+    const { branding } = await getBranding();
     const ev = await createMeetEvent({
-      summary: "حصة قرآن — أكاديمية الحفظة",
+      summary: `حصة قرآن — ${branding.fullName}`,
       startISO: start.toISOString(),
       endISO: end.toISOString(),
       timeZone: "Africa/Cairo",
