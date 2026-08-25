@@ -312,8 +312,17 @@ export default async function Home() {
           </div>
         </div>
         <div className="border-t border-white/10">
-          <div className="mx-auto w-full max-w-6xl px-6 py-5 text-center text-sm opacity-60">
-            {footer.copyright}
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-5 text-center text-sm opacity-60">
+            <span>{footer.copyright}</span>
+            {/* روابط عامة مطلوبة صراحةً لتوثيق تطبيق Google OAuth */}
+            <span className="flex gap-4">
+              <Link href="/privacy" className="transition-opacity hover:opacity-100 hover:underline">
+                سياسة الخصوصية
+              </Link>
+              <Link href="/terms" className="transition-opacity hover:opacity-100 hover:underline">
+                شروط الاستخدام
+              </Link>
+            </span>
           </div>
         </div>
       </footer>

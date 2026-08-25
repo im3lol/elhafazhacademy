@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { sql } from "@/lib/db";
 
 /**
@@ -268,6 +269,10 @@ function merge<T>(base: T, override: unknown): T {
 }
 
 export async function getBranding(): Promise<{ branding: Branding; landing: LandingContent }> {
+  // الهوية بيانات لكل طلب لا لكل بناء: بدون هذا السطر تُصيَّر الصفحات التي لا
+  // تلمس كوكيز (الدخول، الخصوصية، الشروط) صفحاتٍ ثابتة فتتجمّد على الاسم الذي
+  // كان وقت البناء، فتغيّره الجهة من /admin/branding ولا يتغيّر عندها شيء.
+  await connection();
   if (cache && Date.now() - cache.at < TTL_MS) return cache;
   try {
     const rows = await sql<{ key: string; value: unknown }[]>`
